@@ -15,8 +15,8 @@ const rolePill: Record<Keeper["role"], string> = {
 
 export default function ScorekeepersPage() {
   const { show, node } = useToast();
-  const [invite, setInvite] = useState("");
-  const [inviteRole, setInviteRole] = useState<Keeper["role"]>("Scorer");
+  const [newName, setNewName] = useState("");
+  const [newRole, setNewRole] = useState<Keeper["role"]>("Scorer");
   const [list, setList] = useState<Keeper[]>(keepers);
   const [qr, setQr] = useState<{ keeper: Keeper; dataUrl: string; url: string } | null>(null);
 
@@ -26,7 +26,8 @@ export default function ScorekeepersPage() {
 
   const openQr = useCallback(async (k: Keeper) => {
     if (!k.gameId) return;
-    const url = `${window.location.origin}/score/${k.gameId}?role=${k.role.toLowerCase()}`;
+    const params = new URLSearchParams({ role: k.role.toLowerCase(), name: k.name });
+    const url = `${window.location.origin}/score/${k.gameId}?${params}`;
     try {
       const dataUrl = await QRCode.toDataURL(url, { width: 320, margin: 1, color: { dark: "#17231f", light: "#fffdfa" } });
       setQr({ keeper: k, dataUrl, url });
@@ -35,31 +36,40 @@ export default function ScorekeepersPage() {
     }
   }, [show]);
 
-  const sendInvite = () => {
-    if (!invite.trim()) return;
-    setList((prev) => [...prev, { name: invite.trim(), status: "Invite sent", role: inviteRole, gameId: null }]);
-    setInvite("");
-    show(`Invite sent as ${inviteRole.toLowerCase()}`);
+  const addPerson = () => {
+    const name = newName.trim();
+    if (!name) return;
+    setList((prev) => [...prev, { name, role: newRole, gameId: null }]);
+    setNewName("");
+    show(`${name} added as ${newRole.toLowerCase()}`);
+  };
+
+  const removePerson = (name: string) => {
+    setList((prev) => prev.filter((k) => k.name !== name));
   };
 
   return (
     <>
-      <PageHeader title="Scorekeepers" subtitle="Assign a role and a game — scan the QR to start scoring, no account needed" />
+      <PageHeader
+        title="Scorekeepers"
+        subtitle="Add people by name and assign a game — each QR opens their scoring screen, no accounts involved"
+      />
 
       <div className="mb-5 flex max-w-2xl flex-wrap gap-2">
         <input
           className="inp flex-1"
-          placeholder="name@email.com"
-          aria-label="Invite email"
-          value={invite}
-          onChange={(e) => setInvite(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendInvite()}
+          placeholder="Name — e.g. Sam Ortiz"
+          aria-label="Name of scorer or referee"
+          value={newName}
+          maxLength={40}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addPerson()}
         />
-        <select className="inp !w-auto" aria-label="Role for invite" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Keeper["role"])}>
+        <select className="inp !w-auto" aria-label="Role" value={newRole} onChange={(e) => setNewRole(e.target.value as Keeper["role"])}>
           <option>Scorer</option>
           <option>Referee</option>
         </select>
-        <button className="btn btn-pri whitespace-nowrap" onClick={sendInvite} disabled={!invite.trim()}>Send invite</button>
+        <button className="btn btn-pri whitespace-nowrap" onClick={addPerson} disabled={!newName.trim()}>Add person</button>
       </div>
 
       <div className="max-w-3xl divide-y divide-line rounded-lg border border-line bg-card">
@@ -75,8 +85,7 @@ export default function ScorekeepersPage() {
                   </span>
                 </div>
                 <p className="text-sm text-muted">
-                  {k.status}
-                  {game && <> · {game.field} · {game.time}</>}
+                  {game ? `${game.field} · ${game.time} · ${game.teamA} vs ${game.teamB}` : "No game assigned yet"}
                 </p>
               </div>
 
@@ -111,6 +120,15 @@ export default function ScorekeepersPage() {
                 onClick={() => openQr(k)}
               >
                 QR code
+              </button>
+
+              <button
+                className="btn !px-3 text-flag"
+                title={`Remove ${k.name}`}
+                aria-label={`Remove ${k.name}`}
+                onClick={() => removePerson(k.name)}
+              >
+                ✕
               </button>
             </div>
           );
@@ -154,7 +172,9 @@ export default function ScorekeepersPage() {
               </button>
               <button className="btn btn-pri flex-1" onClick={() => setQr(null)}>Done</button>
             </div>
-            <p className="mt-3 text-center text-xs text-muted">Opens the scoring page directly — no sign-up required.</p>
+            <p className="mt-3 text-center text-xs text-muted">
+              Opens {qr.keeper.name}&apos;s scoring screen by name — no sign-up, no password.
+            </p>
           </div>
         </div>
       )}

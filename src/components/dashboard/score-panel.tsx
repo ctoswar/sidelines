@@ -65,11 +65,13 @@ export interface ScorePanelProps {
   target?: number;
   label?: string;
   role?: string;
+  /** Person's name — carried in the QR link so scanning identifies them. */
+  keeper?: string;
   /** Public (QR-scanned) mode: no dashboard redirect on finish. */
   publicMode?: boolean;
 }
 
-export function ScorePanel({ teams, field, target = 15, label, role, publicMode = false }: ScorePanelProps) {
+export function ScorePanel({ teams, field, target = 15, label, role, keeper, publicMode = false }: ScorePanelProps) {
   const router = useRouter();
   const { show, node } = useToast();
   const [s, dispatch] = useReducer(makeReducer(teams), [0, 0] as [number, number], makeInitial);
@@ -101,6 +103,7 @@ export function ScorePanel({ teams, field, target = 15, label, role, publicMode 
           </button>
         </div>
         <div className="bg-field pb-3 text-center text-sm text-white">
+          {keeper && <span className="mr-2 font-bold">{keeper}</span>}
           {role && <span className="mr-2 font-bold uppercase tracking-wider">{role}</span>}
           Soft cap in <b className="tabular-nums">{clock(s.secs)}</b>
           <button onClick={() => dispatch({ type: "pause" })} className="ml-2 underline">{s.running ? "Pause" : "Resume"}</button>
