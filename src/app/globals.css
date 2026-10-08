@@ -373,6 +373,9 @@ body {
 .score-public-page .score-public-intro { color: #f4f0e7; }
 .score-public-page .score-public-intro .text-muted { color: rgba(244,240,231,.64); }
 .score-public-page .score-panel-public { background: var(--scoreboard-panel); border-color: var(--scoreboard-line); }
+.score-public-page .score-public-meta { font-size: .8rem; letter-spacing: .14em; }
+.score-panel-clock { display: flex; align-items: center; justify-content: center; gap: .45rem; }
+.score-panel-clock .score-clock { font-size: 1.2rem; }
 
 @media (orientation: landscape) and (min-width: 640px) {
   .score-public-page { min-height: 100svh; overflow: hidden; padding: max(.55rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(.55rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); background: var(--scoreboard-bg); }
@@ -382,11 +385,12 @@ body {
   .score-public-intro > :first-child { grid-column: 2; grid-row: 1; }
   .score-public-intro h1 { grid-column: 2; grid-row: 2; font-size: clamp(1.65rem, 4.5vh, 3.25rem); line-height: .85; }
   .score-public-intro > p:nth-last-child(2) { grid-column: 1; grid-row: 1 / span 2; align-self: center; margin: 0; font-size: clamp(.75rem, 1.8vh, 1rem); text-align: left; }
-  .score-public-intro > p:last-child { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; font-size: clamp(.6rem, 1.4vh, .75rem); text-align: right; }
+  .score-public-intro > p:last-child { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; font-size: clamp(.75rem, 1.8vh, 1rem); text-align: right; }
   .score-public-page main { height: calc(100svh - 3.5rem); }
   .score-public-page .score-panel-public { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; width: 100%; max-width: none; min-height: 0; height: 100%; border-width: 2px; border-radius: 1.2rem; box-shadow: 0 14px 40px rgba(0,0,0,.26); }
   .score-panel-public .score-panel-head { padding: .65rem 1rem; background: rgba(16,64,46,.95); }
-  .score-panel-public .score-panel-clock { padding: .45rem 1rem .6rem; background: rgba(16,64,46,.95); }
+  .score-panel-public .score-panel-clock { padding: .45rem 1rem .6rem; background: rgba(16,64,46,.95); font-size: clamp(.85rem, 2vh, 1.1rem); }
+  .score-panel-public .score-panel-clock .score-clock { font-size: clamp(1.25rem, 3.5vh, 2.1rem); }
   .score-panel-public .score-panel-teams { min-height: 0; align-items: stretch; }
   .score-panel-public .score-side { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; align-content: center; gap: clamp(.3rem, 1.1vh, .75rem); padding: clamp(.6rem, 1.8vh, 1.25rem) clamp(.8rem, 3vw, 3.5rem); border-color: var(--scoreboard-line); }
   .score-panel-public .score-side p:first-child { font-size: clamp(1rem, 3vh, 1.8rem); font-weight: 700; }
