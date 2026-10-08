@@ -13,7 +13,7 @@ export default function PlayerSchedulePage() {
         {mine.map((g) => (
           <div key={g.id} className="flex items-center justify-between rounded-xl border border-line bg-card p-4">
             <div>
-              <p className="text-sm text-muted">{g.time} AM · {g.field}</p>
+              <p className="text-sm text-muted">{g.time} · {g.field}</p>
               <p className="font-bold">{g.teamA} vs {g.teamB}</p>
             </div>
             <div className="text-right">

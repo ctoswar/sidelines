@@ -14,12 +14,22 @@ export const teams: Team[] = [
 ];
 
 export const games: Game[] = [
-  { id: "g1", field: "Field 1", time: "9:00", teamA: "Harbor", teamB: "Redline", score: "15–12", status: "final" },
-  { id: "g2", field: "Field 2", time: "9:00", teamA: "Birch", teamB: "Static", score: "6–7", status: "live" },
-  { id: "g3", field: "Field 3", time: "9:00", teamA: "Ironwood", teamB: "Lowtide", score: "11–9", status: "live" },
-  { id: "g4", field: "Field 1", time: "10:30", teamA: "Ironwood", teamB: "Harbor", score: "", status: "next" },
-  { id: "g5", field: "Field 2", time: "10:30", teamA: "Northgate", teamB: "Pinecone", score: "", status: "next" },
-  { id: "g6", field: "Field 3", time: "10:30", teamA: "Lowtide", teamB: "Redline", score: "", status: "next" },
+  // 9:00 AM
+  { id: "g1", field: "Field 1", time: "9:00 AM", teamA: "Harbor", teamB: "Redline", score: "15–12", status: "final", division: "mens", tier: "High Novice" },
+  { id: "g2", field: "Field 2", time: "9:00 AM", teamA: "Birch", teamB: "Static", score: "6–7", status: "live", division: "mixed", tier: "Novice" },
+  { id: "g7", field: "Field 3", time: "9:00 AM", teamA: "Driftwood", teamB: "Kingsley", score: "4–3", status: "live", division: "mens", tier: "Beginners" },
+  // 10:30 AM
+  { id: "g3", field: "Field 1", time: "10:30 AM", teamA: "Ironwood", teamB: "Lowtide", score: "11–9", status: "live", division: "mens", tier: "High Novice" },
+  { id: "g8", field: "Field 2", time: "10:30 AM", teamA: "Sparrow", teamB: "Meridian", score: "13–11", status: "final", division: "womens", tier: "Beginners" },
+  { id: "g9", field: "Field 3", time: "10:30 AM", teamA: "Quarry", teamB: "Sundown", score: "", status: "next", division: "mens", tier: "Low Novice" },
+  // 12:00 PM
+  { id: "g10", field: "Field 1", time: "12:00 PM", teamA: "Willow", teamB: "Ember", score: "", status: "next", division: "womens", tier: "High Novice" },
+  { id: "g11", field: "Field 2", time: "12:00 PM", teamA: "Jive", teamB: "Papaya", score: "", status: "next", division: "mixed", tier: "Beginners" },
+  { id: "g12", field: "Field 3", time: "12:00 PM", teamA: "Kestrel", teamB: "Marlin", score: "", status: "next", division: "womens", tier: "Low Novice" },
+  // 1:30 PM
+  { id: "g4", field: "Field 1", time: "1:30 PM", teamA: "Ironwood", teamB: "Harbor", score: "", status: "next", division: "mens", tier: "High Novice" },
+  { id: "g5", field: "Field 2", time: "1:30 PM", teamA: "Northgate", teamB: "Pinecone", score: "", status: "next", division: "mixed", tier: "Novice" },
+  { id: "g6", field: "Field 3", time: "1:30 PM", teamA: "Lowtide", teamB: "Redline", score: "", status: "next", division: "mens", tier: "High Novice" },
 ];
 
 export const keepers: Keeper[] = [

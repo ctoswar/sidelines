@@ -365,6 +365,7 @@ body {
 .workspace-main > *:nth-child(4) { animation-delay: .18s; }
 .workspace-main section, .workspace-main table, .workspace-main form { content-visibility: auto; contain-intrinsic-size: 360px; }
 @keyframes workspace-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.tier-row { animation: workspace-enter .35s cubic-bezier(.2,.7,.2,1) both; }
 
 .about-page { position: relative; overflow: hidden; }
 .about-hero { min-height: 40rem; }
@@ -431,7 +432,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .workspace-main > *, .auth-card, .about-scoreboard { animation: none; }
+  .workspace-main > *, .auth-card, .about-scoreboard, .tier-row { animation: none; }
   .workspace-main .rounded-xl.border, .workspace-main .rounded-lg.border, .about-feature, .auth-page .rounded-xl.border-2 { transition: none; }
   .loading-dots i { animation: none; opacity: .7; }
 }
