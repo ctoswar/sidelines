@@ -1,12 +1,276 @@
+SIDELINES PROPRIETARY LICENSE
 Copyright (c) 2026 ctos. All rights reserved.
 
-This repository and its contents are made publicly visible for viewing and
-study only.
+==============================================================================
 
-Permission is NOT granted to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of this software, in whole or in part, in any
-form, except as expressly permitted in writing by the copyright holder.
+1. DEFINITIONS
+------------------------------------------------------------------------------
 
-The software is provided "as is", without warranty of any kind.
+  1.1 "Software" means all source code, object code, scripts, stylesheets,
+      markup, configurations, documentation, designs, assets, data files, and
+      related materials made available in this repository, in whole and in
+      part, together with any modifications, derivative works, or additions
+      thereto.
 
-For licensing inquiries, contact: ctos123game@gmail.com
+  1.2 "Purpose" means the sole right granted under this License: to view,
+      read, and study the Software, in source form, for personal evaluation,
+      education, and reference only.
+
+  1.3 "You" (or "Your") means any individual or legal entity that accesses,
+      reads, or otherwise makes use of the Software.
+
+  1.4 "Commercial Use" means any use of the Software, or of any work derived
+      from it, primarily intended for or directed toward commercial advantage
+      or monetary compensation, including but not limited to: offering the
+      Software or a service based on it as a paid product or subscription;
+      incorporating it into a product you sell or license; using it to provide
+      a hosted or managed service for payment; fundraising or soliciting
+      investment on the basis of it; or including it in paid consulting,
+      training, or deployment engagements.
+
+  1.5 "Distributed" means to publish, transmit, share, re-upload, mirror,
+      sublicense, sell, rent, lease, lend, or otherwise make available the
+      Software, or any portion thereof, to any third party, whether or not
+      for consideration and whether over a network or by physical media.
+
+==============================================================================
+
+2. GRANT OF LICENSE
+------------------------------------------------------------------------------
+
+  2.1 Subject to the terms and conditions of this License, the copyright
+      holder grants You a limited, non-exclusive, non-transferable,
+      non-sublicensable, revocable license to access, view, and read the
+      Software in source form through the official repository hosting
+      service, solely for the Purpose described in Section 1.2.
+
+  2.2 This License does not grant You any ownership interest in the
+      Software. The Software is licensed, not sold.
+
+  2.3 The copyright holder may, at its sole discretion and without notice,
+      amend, suspend, or revoke the license granted in Section 2.1 as
+      described in Section 10.
+
+==============================================================================
+
+3. RESTRICTIONS
+------------------------------------------------------------------------------
+
+  Except as expressly permitted in writing by the copyright holder, You
+  shall NOT, and shall not permit any third party to:
+
+  3.1  Use, run, execute, install, deploy, or operate the Software, in whole
+      or in part, for any purpose other than viewing under Section 2.1;
+
+  3.2  Copy, reproduce, duplicate, clone, fork, re-host, mirror, or create
+      any archival copy of the Software beyond transient copies reasonably
+      necessary to view it through the hosting service's normal operation;
+
+  3.3  Modify, adapt, translate, prepare derivative works from, reverse
+      engineer, decompile, disassemble, or otherwise attempt to derive the
+      source code or structure of any portion of the Software, except to the
+      extent such activity is expressly allowed by applicable law
+      notwithstanding this limitation;
+
+  3.4  Distribute, publish, transmit, share, re-upload, sublicense, sell,
+      rent, lease, lend, or otherwise make the Software available to any
+      third party;
+
+  3.5  Remove, obscure, or alter any copyright notices, trademarks, license
+      headers, attribution statements, or other proprietary markings
+      appearing in or on the Software;
+
+  3.6  Use the copyright holder's name, logo, branding, or the identity of
+      the Software to endorse, promote, or represent any product or service
+      without prior written permission;
+
+  3.7  Exploit the Software for any unlawful, infringing, deceptive,
+      abusive, or harmful purpose, or in any manner that violates applicable
+      law or the rights of any third party;
+
+  3.8  Submit any portion of the Software, or works derived from it, to any
+      third-party service, dataset, model training pipeline, code indexing
+      service, or automated analysis system that retains or redistributes
+      submitted code, without prior written permission;
+
+  3.9  Circumvent or attempt to circumvent any technical measure, access
+      control, rate limit, or usage restriction applied to the repository
+      by the hosting service or by the copyright holder.
+
+==============================================================================
+
+4. PERMITTED ACTIVITIES
+------------------------------------------------------------------------------
+
+  For clarity, the following activities are permitted without additional
+  permission:
+
+  4.1  Viewing, reading, searching, and studying the Software through the
+      repository's standard web interface;
+
+  4.2  Taking short quotations and code fragments for the purposes of
+      criticism, comment, news reporting, teaching, scholarship, or
+      research, provided that full attribution is given and that such
+      quotations do not, in aggregate, constitute a substantial portion of
+      the Software;
+
+  4.3  Creating purely personal, non-commercial notes, reviews, or analyses
+      that reference the Software, provided no substantial portion of the
+      Software is reproduced;
+
+  4.4  Forking the repository through the hosting service solely to study
+      the code privately, provided the fork remains private, unmodified,
+      and is not published, promoted, or used to provide any service. The
+      copyright holder may request the removal of any such fork at any time.
+
+==============================================================================
+
+5. NO OTHER RIGHTS
+------------------------------------------------------------------------------
+
+  5.1  All rights not expressly granted to You in this License are reserved
+      by the copyright holder. The License is exhaustive of the rights
+      granted to You with respect to the Software.
+
+  5.2  Nothing in this License shall be construed as granting You any right
+      under any patent, trademark, trade secret, or other intellectual
+      property right of the copyright holder, whether by implication,
+      estoppel, or otherwise.
+
+  5.3  Portions of the Software may incorporate third-party materials that
+      are subject to their own license terms. Such materials are identified
+      at or near the point of use, and those terms prevail in the event of a
+      conflict with this License solely with respect to the identified
+      material.
+
+==============================================================================
+
+6. CONTRIBUTIONS
+------------------------------------------------------------------------------
+
+  6.1  If You submit feedback, suggestions, or contributions to the
+      Software, You grant the copyright holder a perpetual, irrevocable,
+      worldwide, royalty-free, fully paid-up, sublicensable, non-exclusive
+      license to use, reproduce, modify, distribute, and otherwise exploit
+      such contributions in any manner and for any purpose.
+
+  6.2  You represent that You have the right to grant the license in
+      Section 6.1, and that Your contribution does not knowingly infringe
+      the rights of any third party.
+
+  6.3  The copyright holder may, but is not obligated to, review, accept,
+      reject, or remove contributions at its sole discretion.
+
+==============================================================================
+
+7. TRADEMARKS
+------------------------------------------------------------------------------
+
+  7.1  This License does not grant permission to use the trade names,
+      trademarks, service marks, or product names of the copyright holder,
+      except for factual, non-misleading references to the Software.
+
+==============================================================================
+
+8. NO WARRANTY
+------------------------------------------------------------------------------
+
+  8.1  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+      EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+      MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND
+      NON-INFRINGEMENT.
+
+  8.2  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE
+      IS WITH YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME THE
+      ENTIRE COST OF ALL NECESSARY SERVICING, REPAIR, OR CORRECTION.
+
+  8.3  THE COPYRIGHT HOLDER DOES NOT WARRANT THAT THE SOFTWARE WILL BE
+      UNINTERRUPTED, SECURE, OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE
+      CORRECTED.
+
+==============================================================================
+
+9. LIMITATION OF LIABILITY
+------------------------------------------------------------------------------
+
+  9.1  TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT
+      SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+      ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+      OR OTHER DEALINGS IN THE SOFTWARE, INCLUDING BUT NOT LIMITED TO
+      DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, CONSEQUENTIAL, OR
+      PUNITIVE DAMAGES, OR LOSS OF PROFITS, DATA, GOODWILL, OR BUSINESS
+      INTERRUPTION, EVEN IF THE COPYRIGHT HOLDER HAS BEEN ADVISED OF THE
+      POSSIBILITY OF SUCH DAMAGES.
+
+  9.2  IN NO EVENT SHALL THE COPYRIGHT HOLDER'S AGGREGATE LIABILITY
+      ARISING OUT OF OR RELATED TO THIS LICENSE EXCEED ONE HUNDRED
+      UNITED STATES DOLLARS (US $100.00), EVEN IF REMEDIES FAIL OF THEIR
+      ESSENTIAL PURPOSE.
+
+==============================================================================
+
+10. TERMINATION
+------------------------------------------------------------------------------
+
+  10.1 This License is effective until terminated. Your rights under
+       Section 2.1 terminate automatically if You breach any term of this
+       License.
+
+  10.2 Upon termination, You must promptly cease all use of the Software
+       and, where technically feasible, delete and destroy any copies in
+       Your possession or control. Sections 5, 7, 8, 9, 11, and 12 survive
+       termination.
+
+  10.3 Termination does not limit the copyright holder's right to seek any
+       other remedy available at law or in equity.
+
+==============================================================================
+
+11. ENFORCEMENT AND INDEMNITY
+------------------------------------------------------------------------------
+
+  11.1 You agree to indemnify, defend, and hold harmless the copyright
+       holder from and against any and all claims, damages, liabilities,
+       losses, costs, and expenses (including reasonable attorneys' fees)
+       arising out of or related to Your breach of this License or Your use
+       of the Software in violation of this License.
+
+==============================================================================
+
+12. GENERAL PROVISIONS
+------------------------------------------------------------------------------
+
+  12.1 Governing Law. This License shall be governed by and construed in
+       accordance with the laws of the jurisdiction in which the copyright
+       holder maintains its principal place of residence, without regard to
+       its conflict of law principles.
+
+  12.2 Entire Agreement. This License constitutes the entire agreement
+       between the parties with respect to the Software and supersedes all
+       prior or contemporaneous understandings, whether written or oral.
+
+  12.3 Severability. If any provision of this License is held to be
+       invalid or unenforceable, the remaining provisions shall continue
+       in full force and effect, and the invalid provision shall be
+       modified to the minimum extent necessary to make it valid and
+       enforceable.
+
+  12.4 No Waiver. No failure or delay by the copyright holder in exercising
+       any right under this License shall operate as a waiver thereof.
+
+  12.5 Assignment. You may not assign or transfer this License or any of
+       Your rights or obligations under it. The copyright holder may assign
+       this License in whole or in part to any successor or affiliate.
+
+  12.6 Amendments. The copyright holder may amend this License at any time
+       by publishing a revised version in the repository. Continued access
+       to the Software after such publication constitutes acceptance of the
+       revised terms. The version in effect at the time You accessed the
+       Software governs Your prior access.
+
+  12.7 Contact. Questions regarding this License should be directed to:
+       ctos123game@gmail.com
+
+==============================================================================
+END OF LICENSE
