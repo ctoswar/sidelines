@@ -33,7 +33,6 @@ export default async function PublicScorePage({
         <div className="score-public-intro mx-auto mb-4 max-w-sm text-center">
           {keeperName ? (
             <>
-              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-flag">{roleLabel ?? "On the sideline"}</p>
               <h1 className="font-score text-3xl font-bold tracking-tight">{keeperName}</h1>
             </>
           ) : (
