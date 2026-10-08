@@ -103,9 +103,8 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
           </button>
         </div>
         <div className="score-panel-clock bg-field pb-3 text-center text-sm text-white">
-          {keeper && <span className="mr-2 font-bold">{keeper}</span>}
           {role && <span className="mr-2 font-bold uppercase tracking-wider">{role}</span>}
-          Soft cap in <b className="tabular-nums">{clock(s.secs)}</b>
+          <span>Soft cap in <b className="score-clock tabular-nums">{clock(s.secs)}</b></span>
           <button onClick={() => dispatch({ type: "pause" })} className="ml-2 underline">{s.running ? "Pause" : "Resume"}</button>
         </div>
 

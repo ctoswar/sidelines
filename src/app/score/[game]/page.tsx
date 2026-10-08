@@ -42,8 +42,8 @@ export default async function PublicScorePage({
           <p className="mt-1 text-sm text-muted">
             {g.teamA} vs {g.teamB} · {g.time} · {g.field}
           </p>
-          <p className="mt-1 text-xs uppercase tracking-wider text-muted">
-            {divisionLabel(g.division)} · {g.tier} · no account needed
+          <p className="score-public-meta mt-1 text-sm uppercase tracking-wider text-muted">
+            {divisionLabel(g.division)} · {g.tier}
           </p>
         </div>
         <ScorePanel
