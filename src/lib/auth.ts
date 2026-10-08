@@ -7,7 +7,6 @@ export type DemoSession = { email: string; name: string; role: Role };
 type DemoAccount = DemoSession & { password: string };
 const ACCOUNTS_KEY = "sidelines.demo.accounts";
 const SESSION_KEY = "sidelines.demo.session";
-const EVENTS_KEY = "sidelines.demo.registrations";
 
 export const homeFor = (role: Role) => (role === "player" ? "/player" : "/organizer");
 
@@ -21,13 +20,6 @@ function write(key: string, value: unknown) {
 }
 
 export function getSession(): DemoSession | null { return read<DemoSession | null>(SESSION_KEY, null); }
-export function isRegistered(slug: string) { return getSession() ? read<string[]>(EVENTS_KEY, []).includes(slug) : false; }
-export function registerForEvent(slug: string) {
-  if (!getSession()) return false;
-  const registrations = read<string[]>(EVENTS_KEY, []);
-  if (!registrations.includes(slug)) write(EVENTS_KEY, [...registrations, slug]);
-  return true;
-}
 
 // Replace these stubs with your provider (Supabase, Better Auth, Auth.js...).
 // Store the role on the user (e.g. profiles.role) and read it after sign-in.
