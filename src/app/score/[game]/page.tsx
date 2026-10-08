@@ -22,15 +22,15 @@ export default async function PublicScorePage({
   const keeperName = name?.slice(0, 40);
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-6">
-      <header className="mx-auto mb-5 flex max-w-sm items-center justify-between">
+    <div className="score-public-page min-h-screen bg-bg px-4 py-6">
+      <header className="score-public-header mx-auto mb-5 flex max-w-sm items-center justify-between">
         <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-flag">Sidelines</p>
         <Link href={`/organizer/score?game=${g.id}`} className="text-xs text-muted hover:underline">
           Organizer view
         </Link>
       </header>
       <main>
-        <div className="mx-auto mb-4 max-w-sm text-center">
+        <div className="score-public-intro mx-auto mb-4 max-w-sm text-center">
           {keeperName ? (
             <>
               <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-flag">{roleLabel ?? "On the sideline"}</p>

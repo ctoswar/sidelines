@@ -95,25 +95,25 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
 
   return (
     <>
-      <div className="mx-auto max-w-sm overflow-hidden rounded-[2rem] border-4 border-line bg-bg shadow-xl">
-        <div className="flex items-center justify-between bg-field px-4 py-3 text-sm text-white">
+      <div className={`score-panel mx-auto max-w-sm overflow-hidden rounded-[2rem] border-4 border-line bg-bg shadow-xl${publicMode ? " score-panel-public" : ""}`}>
+        <div className="score-panel-head flex items-center justify-between bg-field px-4 py-3 text-sm text-white">
           <span className="font-bold">{field} · Game to {target}</span>
           <button onClick={toggleOffline} className={`rounded px-2 py-1 ${s.offline ? "bg-flag" : "bg-white/15"}`}>
             {s.offline ? `Offline · ${s.queued} queued` : "Online"}
           </button>
         </div>
-        <div className="bg-field pb-3 text-center text-sm text-white">
+        <div className="score-panel-clock bg-field pb-3 text-center text-sm text-white">
           {keeper && <span className="mr-2 font-bold">{keeper}</span>}
           {role && <span className="mr-2 font-bold uppercase tracking-wider">{role}</span>}
           Soft cap in <b className="tabular-nums">{clock(s.secs)}</b>
           <button onClick={() => dispatch({ type: "pause" })} className="ml-2 underline">{s.running ? "Pause" : "Resume"}</button>
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-line">
+        <div className="score-panel-teams grid grid-cols-2 divide-x divide-line">
           {teams.map((name, i) => {
             const side: Side = i === 0 ? "a" : "b";
             return (
-              <div key={side} className="p-4 text-center">
+              <div key={side} className="score-side p-4 text-center">
                 <p className="font-medium">{name}</p>
                 <p className="font-score text-8xl font-bold leading-none tabular-nums" aria-live="polite">{s.score[side]}</p>
                 <button className="btn btn-pri mt-3 w-full !py-4 text-lg" disabled={finished} onClick={() => dispatch({ type: "goal", side })}>+1 goal</button>
@@ -123,7 +123,7 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
           })}
         </div>
 
-        <div className="px-4 pb-4">
+        <div className="score-panel-footer px-4 pb-4">
           <div className="flex gap-2">
             <button className="btn flex-1" disabled={!s.stack.length} onClick={() => dispatch({ type: "undo" })}>Undo</button>
             <button className="btn flex-1" disabled={!finished} onClick={finish}>Finish game</button>
