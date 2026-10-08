@@ -2,6 +2,7 @@ import { Sidebar, type NavItem } from "@/components/dashboard/sidebar";
 
 const items: NavItem[] = [
   { href: "/organizer", label: "Tournaments", also: ["/organizer/tournaments"] },
+  { href: "/organizer/events", label: "Event hub" },
   { href: "/organizer/teams", label: "Teams" },
   { href: "/organizer/schedule", label: "Schedule" },
   { href: "/organizer/scorekeepers", label: "Scorekeepers" },

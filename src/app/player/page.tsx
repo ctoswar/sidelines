@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { AnnouncementsFeed } from "@/components/dashboard/announcements-feed";
 import { games, MY_TEAM } from "@/lib/mock-data";
 
 export const metadata = { title: "Home – Sidelines" };
@@ -38,9 +39,8 @@ export default function PlayerHome() {
         </section>
       </div>
 
-      <section className="mt-4 rounded-xl border border-line bg-card p-5">
-        <p className="font-bold">Heads up</p>
-        <p className="mt-1 text-muted">Your 10:30 game moved from Field 3 to Field 1. Check in with your captain 15 minutes before the pull.</p>
+      <section className="mt-4">
+        <AnnouncementsFeed />
       </section>
     </>
   );

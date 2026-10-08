@@ -8,7 +8,8 @@ import type { TimeMode } from "@/lib/event-time";
 import { formatRange } from "@/lib/events-data";
 import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
-import { getSession, isRegistered, registerForEvent } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { isRegistered, registerForEvent, unregisterFromEvent } from "@/lib/demo-store";
 import * as S from "./event-sections";
 
 const TABS = [
@@ -68,8 +69,9 @@ export function EventShell({ d }: { d: EventDetail }) {
       router.push(`/login?next=${encodeURIComponent(`/events/${e.slug}`)}`);
       return;
     }
-    registerForEvent(e.slug);
-    setRegistered(true);
+    if (registered) unregisterFromEvent(e.slug);
+    else registerForEvent(e.slug);
+    setRegistered(!registered);
   };
 
   return (
@@ -96,7 +98,7 @@ export function EventShell({ d }: { d: EventDetail }) {
         <p className="mt-4 text-sm text-white/70">{mode === "event" ? `All times are in ${e.city} (${d.tz.label}).` : `All times are converted to ${zone}.`}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button onClick={() => setFollowing((f) => !f)} aria-pressed={following} className={`rounded-md px-4 py-2 text-sm font-bold ${following ? "bg-white/15 text-white" : "bg-white text-[#14213d]"}`}>{following ? "Following ✓" : "Follow event"}</button>
-          {e.status === "upcoming" && <button onClick={register} aria-pressed={registered} className={`rounded-md border border-white/30 px-4 py-2 text-sm font-bold ${registered ? "bg-white/15 text-white" : "bg-white text-[#17231f]"}`}>{registered ? "Registered ✓" : "Register for event"}</button>}
+          {e.status === "upcoming" && <button onClick={register} aria-pressed={registered} title={registered ? "Click to cancel your registration" : undefined} className={`rounded-md border border-white/30 px-4 py-2 text-sm font-bold ${registered ? "bg-white/15 text-white" : "bg-white text-[#17231f]"}`}>{registered ? "Registered ✓" : "Register for event"}</button>}
           <button onClick={share} className="rounded-md border border-white/30 px-4 py-2 text-sm font-medium">{copied ? "Link copied" : "Share"}</button>
         </div>
       </header>
