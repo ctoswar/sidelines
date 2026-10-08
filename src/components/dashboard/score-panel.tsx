@@ -103,7 +103,6 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
           </button>
         </div>
         <div className="score-panel-clock bg-field pb-3 text-center text-sm text-white">
-          {role && <span className="mr-2 font-bold uppercase tracking-wider">{role}</span>}
           <span>Soft cap in <b className="score-clock tabular-nums">{clock(s.secs)}</b></span>
           <button onClick={() => dispatch({ type: "pause" })} className="ml-2 underline">{s.running ? "Pause" : "Resume"}</button>
         </div>
@@ -127,7 +126,7 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
             <button className="btn flex-1" disabled={!s.stack.length} onClick={() => dispatch({ type: "undo" })}>Undo</button>
             <button className="btn flex-1" disabled={!finished} onClick={finish}>Finish game</button>
           </div>
-          {label && <p className="mt-3 text-center text-xs uppercase tracking-wider text-muted">{label}</p>}
+          {label && <p className="mt-3 text-center text-xs uppercase tracking-wider text-muted">{publicMode && role ? `${role} · ` : ""}{label}</p>}
           <p className="mb-1 mt-4 text-sm font-bold">Event log</p>
           <ul className="max-h-28 space-y-1 overflow-auto text-sm text-muted">
             {s.log.length ? s.log.map((l, i) => <li key={i}>{l}</li>) : <li>No events yet. Tap +1 goal.</li>}
