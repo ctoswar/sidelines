@@ -33,10 +33,10 @@ export const games: Game[] = [
 ];
 
 export const keepers: Keeper[] = [
-  { name: "Maya Reyes", field: "Field 1", status: "Accepted" },
-  { name: "Jon Park", field: "Field 2", status: "Accepted" },
-  { name: "Lena Cho", field: "Field 3", status: "Accepted" },
-  { name: "sam@club.com", field: "Unassigned", status: "Invite sent" },
+  { name: "Maya Reyes", status: "Accepted", role: "Scorer", gameId: "g1" },
+  { name: "Jon Park", status: "Accepted", role: "Referee", gameId: "g2" },
+  { name: "Lena Cho", status: "Accepted", role: "Scorer", gameId: "g3" },
+  { name: "sam@club.com", status: "Invite sent", role: "Scorer", gameId: null },
 ];
 
 import type { OpenTournament, RosterPlayer } from "@/types";

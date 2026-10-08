@@ -84,7 +84,7 @@ export default function SchedulePage() {
             <h2 className="mb-2 mt-4 font-bold">{t}</h2>
             <div className="grid gap-3 md:grid-cols-3">
               {filtered.filter((g) => g.time === t).map((g) => (
-                <Link key={g.id} href="/organizer/score" className="rounded-lg border border-line bg-card p-4">
+                <Link key={g.id} href={`/organizer/score?game=${g.id}`} className="rounded-lg border border-line bg-card p-4">
                   <div className="flex justify-between text-sm text-muted"><span>{g.field}</span><StatusBadge status={g.status} /></div>
                   <p className="mt-2 font-bold">{g.teamA} vs {g.teamB}</p>
                   <p className="font-score text-3xl tabular-nums">{g.score || "–"}</p>

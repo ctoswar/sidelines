@@ -9,7 +9,11 @@ export interface Game {
   teamA: string; teamB: string; score: string; status: GameStatus;
   division: DivisionId; tier: string;
 }
-export interface Keeper { name: string; field: string; status: string }
+export interface Keeper {
+  name: string; status: string;
+  role: "Scorer" | "Referee";
+  gameId: string | null;
+}
 export interface Tournament { name: string; meta: string; status: "Live" | "Draft" }
 
 export interface RosterPlayer { name: string; number: number; position: "Handler" | "Cutter" }
