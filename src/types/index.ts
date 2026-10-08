@@ -1,3 +1,5 @@
+import type { DivisionId } from "@/lib/divisions";
+
 export type GameStatus = "live" | "final" | "next";
 export type Side = "a" | "b";
 
@@ -5,6 +7,7 @@ export interface Team { name: string; pool: "A" | "B"; seed: number }
 export interface Game {
   id: string; field: string; time: string;
   teamA: string; teamB: string; score: string; status: GameStatus;
+  division: DivisionId; tier: string;
 }
 export interface Keeper { name: string; field: string; status: string }
 export interface Tournament { name: string; meta: string; status: "Live" | "Draft" }
