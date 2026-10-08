@@ -80,5 +80,7 @@ By participating in this project you agree to abide by the
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the
-[MIT License](LICENSE) of this project.
+This project is **not open source**. The source code is publicly viewable for
+study only — see [LICENSE](LICENSE). By contributing, you agree that your
+contributions are licensed under the same terms and remain the property of the
+copyright holder.
