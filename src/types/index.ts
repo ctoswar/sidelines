@@ -10,7 +10,7 @@ export interface Game {
   division: DivisionId; tier: string;
 }
 export interface Keeper {
-  name: string; status: string;
+  name: string;
   role: "Scorer" | "Referee";
   gameId: string | null;
 }
