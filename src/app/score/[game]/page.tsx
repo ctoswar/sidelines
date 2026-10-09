@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ScorePanel } from "@/components/dashboard/score-panel";
 import { games, keepers } from "@/lib/mock-data";
 import { divisionLabel } from "@/lib/divisions";
+import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 
 // Public, no-account scoring route — opened by scanning a scorekeeper QR code.
 // The QR link carries the person's name and role, so scanning identifies them.
@@ -20,6 +21,7 @@ export default async function PublicScorePage({
 
   const roleLabel = role === "umpire" ? "Umpire" : role === "scorer" ? "Scorer" : undefined;
   const keeperName = name?.slice(0, 40);
+  const scheduleLabel = `${g.time} · ${fieldGameLabel(g, getFieldGameNumbers(games))}`;
 
   // This slot can hold two people — show everyone assigned, scanned person first.
   const slotNames = keepers.filter((k) => k.gameId === g.id).map((k) => k.name);
@@ -32,13 +34,10 @@ export default async function PublicScorePage({
         <Link href={`/organizer/score?game=${g.id}`} className="text-xs text-muted hover:underline">
           Organizer view
         </Link>
-      </header>
+        </header>
       <main>
         <div className="score-public-intro mx-auto mb-4 max-w-sm text-center">
-          <h1 className="font-score text-3xl font-bold tracking-tight">{g.teamA} vs {g.teamB}</h1>
-          <p className="mt-1 text-sm text-muted">
-            {g.time} · {g.field}
-          </p>
+          <h1 className="score-public-schedule-label font-score font-bold tracking-tight">{scheduleLabel}</h1>
           <p className="score-public-meta mt-1 text-sm uppercase tracking-wider text-muted">
             {divisionLabel(g.division)} · {g.tier}
           </p>
@@ -46,6 +45,7 @@ export default async function PublicScorePage({
         <ScorePanel
           teams={[g.teamA, g.teamB]}
           field={g.field}
+          scheduleLabel={scheduleLabel}
           role={roleLabel}
           keeper={keeperLabel}
           label={`${divisionLabel(g.division)} · ${g.tier}`}

@@ -6,6 +6,9 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
 import { games, keepers } from "@/lib/mock-data";
 import { divisionLabel } from "@/lib/divisions";
+import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
+import { GameSelect } from "@/components/dashboard/game-select";
+import { AnimatedSelect } from "@/components/dashboard/animated-select";
 import type { Game, Keeper } from "@/types";
 
 /** Each game takes at most two people — any mix of roles. */
@@ -16,10 +19,12 @@ const rolePill: Record<Keeper["role"], string> = {
   Umpire: "bg-[var(--desk-orange)] text-white",
 };
 
-const gameOptionLabel = (g: Game) =>
-  `${g.time} · ${g.field} · ${g.teamA} vs ${g.teamB} (${divisionLabel(g.division)} ${g.tier})`;
+const roleOptions = [
+  { value: "Scorer", label: "Scorer", meta: "Tracks the score" },
+  { value: "Umpire", label: "Umpire", meta: "Watches the game" },
+];
 
-const gameShortLabel = (g: Game) => `${g.time} · ${g.field}`;
+const gameShortLabel = (g: Game) => `${g.time} · ${fieldGameLabel(g, getFieldGameNumbers(games))}`;
 
 type Group = { game: Game | null; people: Keeper[] };
 type QrCode = { keeper: Keeper; dataUrl: string; url: string };
@@ -32,6 +37,7 @@ export default function ScorekeepersPage() {
   const [list, setList] = useState<Keeper[]>(keepers);
   const [qr, setQr] = useState<{ codes: QrCode[]; index: number } | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const gameNumberById = getFieldGameNumbers(games);
 
   const labelFor = (gameId: string) => {
     const g = games.find((x) => x.id === gameId);
@@ -151,19 +157,22 @@ export default function ScorekeepersPage() {
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addPerson()}
         />
-        <select className="inp !w-auto" aria-label="Role" value={newRole} onChange={(e) => setNewRole(e.target.value as Keeper["role"])}>
-          <option>Scorer</option>
-          <option>Umpire</option>
-        </select>
-        <select className="inp !w-auto" aria-label="Game" value={newGameId} onChange={(e) => setNewGameId(e.target.value)}>
-          <option value="">Unassigned</option>
-          {games.map((g) => (
-            <option key={g.id} value={g.id} disabled={isFull(g.id)}>
-              {gameOptionLabel(g)}
-              {isFull(g.id) ? " — full" : ""}
-            </option>
-          ))}
-        </select>
+        <AnimatedSelect
+          aria-label="Role"
+          value={newRole}
+          onChange={(value) => setNewRole(value as Keeper["role"])}
+          options={roleOptions}
+          className="w-24 shrink-0"
+        />
+        <GameSelect
+          aria-label="Game"
+          value={newGameId}
+          onChange={setNewGameId}
+          games={games}
+          gameNumberById={gameNumberById}
+          disabledGameIds={new Set(games.filter((game) => isFull(game.id)).map((game) => game.id))}
+          className="min-w-[17rem] max-w-full flex-[1_1_18rem]"
+        />
         <button className="btn btn-pri whitespace-nowrap" onClick={addPerson} disabled={!newName.trim()}>Add person</button>
       </div>
 
@@ -171,11 +180,11 @@ export default function ScorekeepersPage() {
         {groups.map(({ game, people }) => {
           const full = people.length >= MAX_PER_GAME;
           return (
-            <section key={game?.id ?? "unassigned"} className="overflow-hidden rounded-lg border border-line bg-card">
+            <section key={game?.id ?? "unassigned"} className="relative overflow-visible rounded-lg border border-line bg-card">
               <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <div className="min-w-0">
                   <p className="truncate font-bold">
-                    {game ? `${game.time} · ${game.field} · ${game.teamA} vs ${game.teamB}` : "Unassigned"}
+                    {game ? `${game.time} · ${fieldGameLabel(game, gameNumberById)} · ${game.teamA} vs ${game.teamB}` : "Unassigned"}
                   </p>
                   <p className="truncate text-sm text-muted">
                     {game ? `${divisionLabel(game.division)} · ${game.tier}` : "Pick a game below to assign these people"}
@@ -206,30 +215,23 @@ export default function ScorekeepersPage() {
                       </div>
                     </div>
 
-                    <select
-                      className="inp !w-auto"
+                    <AnimatedSelect
                       aria-label={`Role for ${k.name}`}
                       value={k.role}
-                      onChange={(e) => update(k.name, { role: e.target.value as Keeper["role"] })}
-                    >
-                      <option>Scorer</option>
-                      <option>Umpire</option>
-                    </select>
+                      onChange={(value) => update(k.name, { role: value as Keeper["role"] })}
+                      options={roleOptions}
+                      className="w-24 shrink-0"
+                    />
 
                     {!game && (
-                      <select
-                        className="inp !w-auto"
+                      <GameSelect
                         aria-label={`Game for ${k.name}`}
                         value={k.gameId ?? ""}
-                        onChange={(e) => update(k.name, { gameId: e.target.value || null })}
-                      >
-                        <option value="">Unassigned</option>
-                        {games.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {gameOptionLabel(g)}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(gameId) => update(k.name, { gameId: gameId || null })}
+                        games={games}
+                        gameNumberById={gameNumberById}
+                        className="min-w-[17rem] max-w-full flex-[1_1_18rem]"
+                      />
                     )}
 
                     {!game && (
@@ -272,19 +274,14 @@ export default function ScorekeepersPage() {
 
               {game && (
                 <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3">
-                  <select
-                    className="inp min-w-52 flex-1"
-                    aria-label={`Game for this slot`}
+                  <GameSelect
+                    aria-label="Game for this slot"
                     value={game.id}
-                    onChange={(e) => moveGroup(e.target.value, people, game.id)}
-                  >
-                    <option value="">Unassigned</option>
-                    {games.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {gameOptionLabel(g)}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(gameId) => moveGroup(gameId, people, game.id)}
+                    games={games}
+                    gameNumberById={gameNumberById}
+                    className="min-w-52 flex-1"
+                  />
                   <button className="btn whitespace-nowrap" onClick={() => openQr(people)}>
                     QR code
                   </button>
