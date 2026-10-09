@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import { useToast } from "@/components/dashboard/use-toast";
 import { games } from "@/lib/mock-data";
 import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
+import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 
 const pill = (active: boolean) =>
   `rounded-full border px-3.5 py-1.5 text-sm font-bold transition-colors ${
@@ -19,6 +20,8 @@ export default function SchedulePage() {
   const { show, node } = useToast();
   const [division, setDivision] = useState<DivisionId | null>(null);
   const [tier, setTier] = useState<string | null>(null);
+
+  const gameNumberById = getFieldGameNumbers(games);
 
   const tiers = divisions.find((d) => d.id === division)?.tiers ?? [];
   const filtered = games.filter(
@@ -85,7 +88,10 @@ export default function SchedulePage() {
             <div className="grid gap-3 md:grid-cols-3">
               {filtered.filter((g) => g.time === t).map((g) => (
                 <Link key={g.id} href={`/organizer/score?game=${g.id}`} className="rounded-lg border border-line bg-card p-4">
-                  <div className="flex justify-between text-sm text-muted"><span>{g.field}</span><StatusBadge status={g.status} /></div>
+                  <div className="flex justify-between text-sm text-muted">
+                    <span>{fieldGameLabel(g, gameNumberById)}</span>
+                    <StatusBadge status={g.status} />
+                  </div>
                   <p className="mt-2 font-bold">{g.teamA} vs {g.teamB}</p>
                   <p className="font-score text-3xl tabular-nums">{g.score || "–"}</p>
                   <p className="mt-2 text-xs uppercase tracking-wider text-muted">{divisionLabel(g.division)} · {g.tier}</p>

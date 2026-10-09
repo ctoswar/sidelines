@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/dashboard/use-toast";
 import type { Side } from "@/types";
@@ -62,6 +62,7 @@ function makeReducer(names: [string, string]) {
 export interface ScorePanelProps {
   teams: [string, string];
   field: string;
+  scheduleLabel?: string;
   target?: number;
   label?: string;
   role?: string;
@@ -71,11 +72,13 @@ export interface ScorePanelProps {
   publicMode?: boolean;
 }
 
-export function ScorePanel({ teams, field, target = 15, label, role, keeper, publicMode = false }: ScorePanelProps) {
+export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, role, keeper, publicMode = false }: ScorePanelProps) {
   const router = useRouter();
   const { show, node } = useToast();
   const [s, dispatch] = useReducer(makeReducer(teams), [0, 0] as [number, number], makeInitial);
+  const [bumped, setBumped] = useState<Side | null>(null);
   const finished = s.score.a >= target || s.score.b >= target;
+  const capProgress = Math.max(0, Math.min(100, (s.secs / 760) * 100));
 
   useEffect(() => {
     const id = setInterval(() => dispatch({ type: "tick" }), 1000);
@@ -93,31 +96,54 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
     if (!publicMode) router.push("/organizer/schedule");
   };
 
+  const scoreGoal = (side: Side) => {
+    setBumped(null);
+    dispatch({ type: "goal", side });
+    requestAnimationFrame(() => setBumped(side));
+  };
+
   // Footer meta line — keeper · role · division/tier (keeper + role only on scanned links).
   const meta = [publicMode && keeper, publicMode && role, label].filter(Boolean).join(" · ");
 
   return (
     <>
       <div className={`score-panel mx-auto max-w-sm overflow-hidden rounded-[2rem] border-4 border-line bg-bg shadow-xl${publicMode ? " score-panel-public" : ""}`}>
-        <div className="score-panel-head flex items-center justify-between bg-field px-4 py-3 text-sm text-white">
-          <span className="font-bold">{field} · Game to {target}</span>
-          <button onClick={toggleOffline} className={`rounded px-2 py-1 ${s.offline ? "bg-flag" : "bg-white/15"}`}>
-            {s.offline ? `Offline · ${s.queued} queued` : "Online"}
-          </button>
-        </div>
+        {!publicMode && (
+          <div className="score-panel-head flex items-center justify-between bg-field px-4 py-3 text-sm text-white">
+            <span className="font-bold">{scheduleLabel ?? `${field} · Game to ${target}`}</span>
+            <button onClick={toggleOffline} className={`rounded px-2 py-1 ${s.offline ? "bg-flag" : "bg-white/15"}`}>
+              {s.offline ? `Offline · ${s.queued} queued` : "Online"}
+            </button>
+          </div>
+        )}
         <div className="score-panel-clock bg-field pb-3 text-center text-sm text-white">
-          <span>Soft cap in <b className="score-clock tabular-nums">{clock(s.secs)}</b></span>
-          <button onClick={() => dispatch({ type: "pause" })} className="ml-2 underline">{s.running ? "Pause" : "Resume"}</button>
+          <div className="score-clock-row">
+            <span>Soft cap in <b className="score-clock tabular-nums">{clock(s.secs)}</b></span>
+            <span className="score-rule">First to {target}</span>
+            <span className="score-clock-actions">
+              {publicMode && (
+                <button onClick={toggleOffline} className={`score-connection ${s.offline ? "is-offline" : ""}`}>
+                  <span className="score-connection-dot" aria-hidden="true" />
+                  {s.offline ? `Offline · ${s.queued}` : "Online"}
+                </button>
+              )}
+              <button onClick={() => dispatch({ type: "pause" })} className="score-pause">{s.running ? "Pause" : "Resume"}</button>
+            </span>
+          </div>
+          <div className="score-cap-track" aria-hidden="true"><span style={{ width: `${capProgress}%` }} /></div>
         </div>
 
         <div className="score-panel-teams grid grid-cols-2 divide-x divide-line">
           {teams.map((name, i) => {
             const side: Side = i === 0 ? "a" : "b";
             return (
-              <div key={side} className="score-side p-4 text-center">
-                <p className="font-medium">{name}</p>
-                <p className="font-score text-8xl font-bold leading-none tabular-nums" aria-live="polite">{s.score[side]}</p>
-                <button className="btn btn-pri mt-3 w-full !py-4 text-lg" disabled={finished} onClick={() => dispatch({ type: "goal", side })}>+1 goal</button>
+              <div key={side} className={`score-side p-4 text-center ${bumped === side ? "is-scored" : ""} ${finished && s.score[side] >= target ? "is-winning" : ""}`}>
+                <span className="score-side-index" aria-hidden="true">{i === 0 ? "A" : "B"}</span>
+                <p className="score-team-name font-medium">{name}</p>
+                <p className="score-value font-score text-8xl font-bold leading-none tabular-nums" aria-live="polite">{s.score[side]}</p>
+                <button className="btn btn-pri score-goal-button mt-3 w-full !py-4 text-lg" disabled={finished} onClick={() => scoreGoal(side)}>
+                  +1<span className="sr-only"> point for {name}</span>
+                </button>
                 <button className="btn mt-2 w-full" disabled={!s.timeouts[side]} onClick={() => dispatch({ type: "timeout", side })}>Timeout ({s.timeouts[side]})</button>
               </div>
             );
