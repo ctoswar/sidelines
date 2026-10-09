@@ -11,7 +11,7 @@ export interface Game {
 }
 export interface Keeper {
   name: string;
-  role: "Scorer" | "Referee";
+  role: "Scorer" | "Umpire";
   gameId: string | null;
 }
 export interface Tournament { name: string; meta: string; status: "Live" | "Draft" }
