@@ -395,6 +395,12 @@ body {
 .score-public-page .score-public-header { color: #f4f0e7; }
 .score-public-page .score-public-intro { color: #f4f0e7; }
 .score-public-schedule-label { display: block; font-size: clamp(2.2rem, 7vw, 5rem); line-height: .9; letter-spacing: -.045em; }
+.score-public-crew { display: flex; align-items: flex-start; justify-content: flex-start; flex-direction: column; gap: .55rem; }
+.score-public-crew-member { display: inline-flex; align-items: center; gap: .5rem; min-width: 13rem; padding: .5rem .75rem; border: 1px solid rgba(244,240,231,.15); border-radius: 999px; color: rgba(244,240,231,.82); font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.score-public-crew-member b { color: rgba(244,240,231,.62); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; }
+.score-public-crew-member em { color: #c8ef70; font-size: .62rem; font-style: normal; letter-spacing: .1em; text-transform: uppercase; }
+.score-public-crew-member.is-you { border-color: rgba(200,239,112,.55); background: rgba(200,239,112,.1); color: #f4f0e7; }
+.score-public-identity-dot { width: .48rem; height: .48rem; border-radius: 50%; background: #c8ef70; box-shadow: 0 0 0 .22rem rgba(200,239,112,.13); }
 .score-public-page .score-public-intro .text-muted { color: rgba(244,240,231,.64); }
 .score-public-page .score-public-header { animation: score-reveal .55s cubic-bezier(.2,.8,.2,1) both; }
 .score-public-page .score-public-intro { animation: score-reveal .55s .08s cubic-bezier(.2,.8,.2,1) both; }
@@ -404,6 +410,7 @@ body {
 .score-clock-actions { display: inline-flex; align-items: center; gap: .7rem; }
 .score-rule { color: rgba(244,240,231,.55); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; }
 .score-pause { color: #f4f0e7; text-decoration: underline; text-underline-offset: .2em; }
+.score-pause.is-start { color: #c8ef70; font-weight: 800; }
 .score-connection { display: inline-flex; align-items: center; gap: .35rem; color: rgba(244,240,231,.8); font-size: .68rem; }
 .score-connection-dot { width: .42rem; height: .42rem; border-radius: 999px; background: #c8ef70; box-shadow: 0 0 0 .2rem rgba(200,239,112,.12); }
 .score-connection.is-offline .score-connection-dot { background: var(--desk-orange); box-shadow: 0 0 0 .2rem rgba(239,101,61,.15); }
@@ -437,7 +444,7 @@ body {
   .score-public-intro > :first-child { grid-column: 2; grid-row: 1; }
   .score-public-intro h1 { grid-column: 2; grid-row: 2; }
   .score-public-schedule-label { font-size: clamp(2rem, 6vh, 4.5rem); line-height: .9; }
-  .score-public-intro > p:nth-last-child(2) { grid-column: 1; grid-row: 1 / span 2; align-self: center; margin: 0; font-size: clamp(.75rem, 1.8vh, 1rem); text-align: left; }
+  .score-public-intro > :nth-child(2) { grid-column: 1; grid-row: 1 / span 2; align-self: center; margin: 0; font-size: clamp(.75rem, 1.8vh, 1rem); text-align: left; }
   .score-public-intro > p:last-child { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; font-size: clamp(.75rem, 1.8vh, 1rem); text-align: right; }
   .score-public-page main { height: calc(100svh - 3.5rem); }
   .score-public-page .score-panel-public { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: 100%; max-width: none; min-height: 0; height: 100%; border-width: 2px; border-radius: 1.2rem; box-shadow: 0 14px 40px rgba(0,0,0,.26); }

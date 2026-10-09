@@ -30,7 +30,7 @@ type Action =
 function makeInitial(scores: [number, number]): State {
   return {
     score: { a: scores[0], b: scores[1] }, timeouts: { a: 1, b: 1 }, log: [], stack: [],
-    offline: false, queued: 0, secs: 760, running: true,
+    offline: false, queued: 0, secs: 760, running: false,
   };
 }
 
@@ -81,9 +81,10 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
   const capProgress = Math.max(0, Math.min(100, (s.secs / 760) * 100));
 
   useEffect(() => {
+    if (!s.running) return;
     const id = setInterval(() => dispatch({ type: "tick" }), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [s.running]);
 
   const toggleOffline = () => {
     if (s.offline && s.queued) show(`${s.queued} events synced`);
@@ -103,7 +104,7 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
   };
 
   // Footer meta line — keeper · role · division/tier (keeper + role only on scanned links).
-  const meta = [publicMode && keeper, publicMode && role, label].filter(Boolean).join(" · ");
+  const meta = [!publicMode && keeper, !publicMode && role, label].filter(Boolean).join(" · ");
 
   return (
     <>
@@ -127,7 +128,9 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
                   {s.offline ? `Offline · ${s.queued}` : "Online"}
                 </button>
               )}
-              <button onClick={() => dispatch({ type: "pause" })} className="score-pause">{s.running ? "Pause" : "Resume"}</button>
+              <button onClick={() => dispatch({ type: "pause" })} className={`score-pause ${!s.running && s.secs === 760 ? "is-start" : ""}`}>
+                {s.running ? "Pause" : s.secs === 760 ? "Start" : "Resume"}
+              </button>
             </span>
           </div>
           <div className="score-cap-track" aria-hidden="true"><span style={{ width: `${capProgress}%` }} /></div>

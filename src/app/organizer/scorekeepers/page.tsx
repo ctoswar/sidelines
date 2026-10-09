@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
 import { games, keepers } from "@/lib/mock-data";
 import { divisionLabel } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
+import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
 import { GameSelect } from "@/components/dashboard/game-select";
 import { AnimatedSelect } from "@/components/dashboard/animated-select";
 import type { Game, Keeper } from "@/types";
@@ -20,11 +21,11 @@ const rolePill: Record<Keeper["role"], string> = {
 };
 
 const roleOptions = [
-  { value: "Scorer", label: "Scorer", meta: "Tracks the score" },
+  { value: "Scorer", label: "Scorekeeper", meta: "Tracks the score" },
   { value: "Umpire", label: "Umpire", meta: "Watches the game" },
 ];
 
-const gameShortLabel = (g: Game) => `${g.time} · ${fieldGameLabel(g, getFieldGameNumbers(games))}`;
+const roleLabel = (role: Keeper["role"]) => role === "Scorer" ? "Scorekeeper" : role;
 
 type Group = { game: Game | null; people: Keeper[] };
 type QrCode = { keeper: Keeper; dataUrl: string; url: string };
@@ -37,11 +38,17 @@ export default function ScorekeepersPage() {
   const [list, setList] = useState<Keeper[]>(keepers);
   const [qr, setQr] = useState<{ codes: QrCode[]; index: number } | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const gameNumberById = getFieldGameNumbers(games);
+  const [schedule, setSchedule] = useState(games);
+
+  useEffect(() => {
+    setSchedule(applyScheduleStartTime(games, readScheduleStartTime()));
+  }, []);
+
+  const gameNumberById = getFieldGameNumbers(schedule);
 
   const labelFor = (gameId: string) => {
-    const g = games.find((x) => x.id === gameId);
-    return g ? gameShortLabel(g) : gameId;
+    const g = schedule.find((x) => x.id === gameId);
+    return g ? `${g.time} · ${fieldGameLabel(g, gameNumberById)}` : gameId;
   };
 
   /** How many people already sit in a game (optionally ignoring movers). */
@@ -57,7 +64,7 @@ export default function ScorekeepersPage() {
     try {
       const codes = await Promise.all(
         assigned.map(async (k) => {
-          const params = new URLSearchParams({ role: k.role.toLowerCase(), name: k.name });
+          const params = new URLSearchParams({ role: k.role.toLowerCase(), name: k.name, scheduleStart: readScheduleStartTime() });
           const url = `${window.location.origin}/score/${k.gameId}?${params}`;
           const dataUrl = await QRCode.toDataURL(url, {
             width: 320,
@@ -131,11 +138,11 @@ export default function ScorekeepersPage() {
   // Unassigned first, then games in schedule order (only those with someone assigned).
   const groups = useMemo<Group[]>(() => {
     const unassigned: Group = { game: null, people: list.filter((k) => !k.gameId) };
-    const byGame = games
+    const byGame = schedule
       .map((game) => ({ game, people: list.filter((k) => k.gameId === game.id) }))
       .filter((g) => g.people.length > 0);
     return [unassigned, ...byGame];
-  }, [list]);
+  }, [list, schedule]);
 
   const active = qr?.codes[qr.index] ?? null;
 
@@ -143,7 +150,7 @@ export default function ScorekeepersPage() {
     <>
       <PageHeader
         title="Scorekeepers"
-        subtitle="Add people by name and assign a game — each game takes up to two people, each QR opens their scoring screen, no accounts involved"
+        subtitle="Add people, assign a game, and choose Scorekeeper or Umpire — each QR opens their role-specific scoring screen"
       />
 
       <div className="mb-5 flex max-w-3xl flex-wrap gap-2">
@@ -162,15 +169,15 @@ export default function ScorekeepersPage() {
           value={newRole}
           onChange={(value) => setNewRole(value as Keeper["role"])}
           options={roleOptions}
-          className="w-24 shrink-0"
+          className="w-36 shrink-0"
         />
         <GameSelect
           aria-label="Game"
           value={newGameId}
           onChange={setNewGameId}
-          games={games}
+          games={schedule}
           gameNumberById={gameNumberById}
-          disabledGameIds={new Set(games.filter((game) => isFull(game.id)).map((game) => game.id))}
+          disabledGameIds={new Set(schedule.filter((game) => isFull(game.id)).map((game) => game.id))}
           className="min-w-[17rem] max-w-full flex-[1_1_18rem]"
         />
         <button className="btn btn-pri whitespace-nowrap" onClick={addPerson} disabled={!newName.trim()}>Add person</button>
@@ -210,7 +217,7 @@ export default function ScorekeepersPage() {
                       <div className="flex items-center gap-2">
                         <p className="font-bold">{k.name}</p>
                         <span className={`rounded-full px-2 py-0.5 text-[0.62rem] font-extrabold uppercase tracking-wider ${rolePill[k.role]}`}>
-                          {k.role}
+                          {roleLabel(k.role)}
                         </span>
                       </div>
                     </div>
@@ -220,7 +227,7 @@ export default function ScorekeepersPage() {
                       value={k.role}
                       onChange={(value) => update(k.name, { role: value as Keeper["role"] })}
                       options={roleOptions}
-                      className="w-24 shrink-0"
+                      className="w-36 shrink-0"
                     />
 
                     {!game && (
@@ -228,7 +235,7 @@ export default function ScorekeepersPage() {
                         aria-label={`Game for ${k.name}`}
                         value={k.gameId ?? ""}
                         onChange={(gameId) => update(k.name, { gameId: gameId || null })}
-                        games={games}
+                        games={schedule}
                         gameNumberById={gameNumberById}
                         className="min-w-[17rem] max-w-full flex-[1_1_18rem]"
                       />
@@ -278,7 +285,7 @@ export default function ScorekeepersPage() {
                     aria-label="Game for this slot"
                     value={game.id}
                     onChange={(gameId) => moveGroup(gameId, people, game.id)}
-                    games={games}
+                    games={schedule}
                     gameNumberById={gameNumberById}
                     className="min-w-52 flex-1"
                   />
@@ -318,7 +325,7 @@ export default function ScorekeepersPage() {
             )}
 
             {(() => {
-              const game = games.find((g) => g.id === active.keeper.gameId);
+              const game = schedule.find((g) => g.id === active.keeper.gameId);
               return game ? (
                 <p className="mt-2 text-sm text-muted">
                   {game.teamA} vs {game.teamB} · {game.time} · {game.field}
