@@ -33,8 +33,9 @@ export const games: Game[] = [
 ];
 
 export const keepers: Keeper[] = [
+  // g1 fills a two-person slot: a scorer and an umpire on the same game
   { name: "Maya Reyes", role: "Scorer", gameId: "g1" },
-  { name: "Jon Park", role: "Referee", gameId: "g2" },
+  { name: "Jon Park", role: "Umpire", gameId: "g1" },
   { name: "Lena Cho", role: "Scorer", gameId: "g3" },
   { name: "Sam Ortiz", role: "Scorer", gameId: null },
 ];

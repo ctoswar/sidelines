@@ -93,6 +93,9 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
     if (!publicMode) router.push("/organizer/schedule");
   };
 
+  // Footer meta line — keeper · role · division/tier (keeper + role only on scanned links).
+  const meta = [publicMode && keeper, publicMode && role, label].filter(Boolean).join(" · ");
+
   return (
     <>
       <div className={`score-panel mx-auto max-w-sm overflow-hidden rounded-[2rem] border-4 border-line bg-bg shadow-xl${publicMode ? " score-panel-public" : ""}`}>
@@ -126,7 +129,7 @@ export function ScorePanel({ teams, field, target = 15, label, role, keeper, pub
             <button className="btn flex-1" disabled={!s.stack.length} onClick={() => dispatch({ type: "undo" })}>Undo</button>
             <button className="btn flex-1" disabled={!finished} onClick={finish}>Finish game</button>
           </div>
-          {label && <p className="mt-3 text-center text-xs uppercase tracking-wider text-muted">{publicMode && role ? `${role} · ` : ""}{label}</p>}
+          {meta && <p className="mt-3 text-center text-xs uppercase tracking-wider text-muted">{meta}</p>}
           <p className="mb-1 mt-4 text-sm font-bold">Event log</p>
           <ul className="max-h-28 space-y-1 overflow-auto text-sm text-muted">
             {s.log.length ? s.log.map((l, i) => <li key={i}>{l}</li>) : <li>No events yet. Tap +1 goal.</li>}

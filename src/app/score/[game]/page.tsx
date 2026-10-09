@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ScorePanel } from "@/components/dashboard/score-panel";
-import { games } from "@/lib/mock-data";
+import { games, keepers } from "@/lib/mock-data";
 import { divisionLabel } from "@/lib/divisions";
 
 // Public, no-account scoring route — opened by scanning a scorekeeper QR code.
@@ -18,8 +18,12 @@ export default async function PublicScorePage({
   const g = games.find((x) => x.id === game);
   if (!g) notFound();
 
-  const roleLabel = role === "referee" ? "Referee" : role === "scorer" ? "Scorer" : undefined;
+  const roleLabel = role === "umpire" ? "Umpire" : role === "scorer" ? "Scorer" : undefined;
   const keeperName = name?.slice(0, 40);
+
+  // This slot can hold two people — show everyone assigned, scanned person first.
+  const slotNames = keepers.filter((k) => k.gameId === g.id).map((k) => k.name);
+  const keeperLabel = (keeperName ? [keeperName, ...slotNames.filter((n) => n !== keeperName)] : slotNames).join(" · ");
 
   return (
     <div className="score-public-page min-h-screen bg-bg px-4 py-6">
@@ -31,15 +35,9 @@ export default async function PublicScorePage({
       </header>
       <main>
         <div className="score-public-intro mx-auto mb-4 max-w-sm text-center">
-          {keeperName ? (
-            <>
-              <h1 className="font-score text-3xl font-bold tracking-tight">{keeperName}</h1>
-            </>
-          ) : (
-            <h1 className="font-score text-3xl font-bold tracking-tight">{g.teamA} vs {g.teamB}</h1>
-          )}
+          <h1 className="font-score text-3xl font-bold tracking-tight">{g.teamA} vs {g.teamB}</h1>
           <p className="mt-1 text-sm text-muted">
-            {g.teamA} vs {g.teamB} · {g.time} · {g.field}
+            {g.time} · {g.field}
           </p>
           <p className="score-public-meta mt-1 text-sm uppercase tracking-wider text-muted">
             {divisionLabel(g.division)} · {g.tier}
@@ -49,7 +47,7 @@ export default async function PublicScorePage({
           teams={[g.teamA, g.teamB]}
           field={g.field}
           role={roleLabel}
-          keeper={keeperName}
+          keeper={keeperLabel}
           label={`${divisionLabel(g.division)} · ${g.tier}`}
           publicMode
         />
