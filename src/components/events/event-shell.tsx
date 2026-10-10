@@ -8,7 +8,7 @@ import type { TimeMode } from "@/lib/event-time";
 import { formatRange } from "@/lib/events-data";
 import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
-import { getSession } from "@/lib/auth";
+import { AUTH_CHANGED_EVENT, getSession } from "@/lib/auth";
 import { isRegistered, registerForEvent, unregisterFromEvent } from "@/lib/demo-store";
 import * as S from "./event-sections";
 
@@ -26,7 +26,6 @@ export function EventShell({ d }: { d: EventDetail }) {
   const [zone, setZone] = useState("your time zone");
   const [following, setFollowing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
   const [registered, setRegistered] = useState(false);
   const strip = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -35,9 +34,23 @@ export function EventShell({ d }: { d: EventDetail }) {
     const h = window.location.hash.slice(1) as TabKey;
     if (TABS.some((t) => t.key === h)) setTab(h);
     setZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-    setSignedIn(Boolean(getSession()));
-    setRegistered(isRegistered(e.slug));
   }, []);
+
+  // The public header can sign you out without this page being replaced, so
+  // re-read the session when it changes — and on focus, which covers signing
+  // out in another tab. Logging out drops the badge rather than keeping it: the
+  // stored registration is still there, it just belongs to someone who is no
+  // longer signed in.
+  useEffect(() => {
+    const sync = () => setRegistered(Boolean(getSession()) && isRegistered(e.slug));
+    sync();
+    window.addEventListener(AUTH_CHANGED_EVENT, sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, [e.slug]);
 
   useEffect(() => {
     const nodes = [...document.querySelectorAll<HTMLElement>(".event-detail-page .event-reveal")];
@@ -65,7 +78,11 @@ export function EventShell({ d }: { d: EventDetail }) {
   const scroll = (dx: number) => strip.current?.scrollBy({ left: dx, behavior: "smooth" });
   const share = async () => { await navigator.clipboard?.writeText(window.location.href.split("#")[0]); setCopied(true); setTimeout(() => setCopied(false), 1800); };
   const register = () => {
-    if (!signedIn) {
+    // Re-read the session rather than trusting state: you can sign out of the
+    // public header while standing here, and a click must never flip the badge
+    // without actually storing the registration.
+    if (!getSession()) {
+      setRegistered(false);
       router.push(`/login?next=${encodeURIComponent(`/events/${e.slug}`)}`);
       return;
     }

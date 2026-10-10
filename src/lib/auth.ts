@@ -10,6 +10,10 @@ const SESSION_KEY = "sidelines.demo.session";
 
 export const homeFor = (role: Role) => (role === "player" ? "/player" : "/organizer");
 
+/** Fired when the demo session changes, so UI outside the workspace — the
+ *  public event page — can drop a stale signed-in state without a navigation. */
+export const AUTH_CHANGED_EVENT = "sidelines:auth-changed";
+
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try { return JSON.parse(window.localStorage.getItem(key) ?? "null") ?? fallback; } catch { return fallback; }
@@ -23,7 +27,12 @@ export function getSession(): DemoSession | null { return read<DemoSession | nul
 
 /** Clears the demo session. The account itself stays so the user can sign back in. */
 export function signOut(): void {
-  if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SESSION_KEY);
+  // Only sign-out broadcasts: signing in and signing up always end in a
+  // navigation, which remounts their consumers. Signing out from the public
+  // header happens in place, on a page that is not going anywhere.
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 }
 
 // Replace these stubs with your provider (Supabase, Better Auth, Auth.js...).
