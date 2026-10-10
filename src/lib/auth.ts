@@ -21,6 +21,11 @@ function write(key: string, value: unknown) {
 
 export function getSession(): DemoSession | null { return read<DemoSession | null>(SESSION_KEY, null); }
 
+/** Clears the demo session. The account itself stays so the user can sign back in. */
+export function signOut(): void {
+  if (typeof window !== "undefined") window.localStorage.removeItem(SESSION_KEY);
+}
+
 // Replace these stubs with your provider (Supabase, Better Auth, Auth.js...).
 // Store the role on the user (e.g. profiles.role) and read it after sign-in.
 export async function signIn(input: LoginInput): Promise<AuthResult> {
