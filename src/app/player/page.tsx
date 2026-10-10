@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { TeamName } from "@/components/dashboard/team-name";
 import { AnnouncementsFeed } from "@/components/dashboard/announcements-feed";
 import { games, MY_TEAM } from "@/lib/mock-data";
 
@@ -13,7 +14,7 @@ export default function PlayerHome() {
 
   return (
     <>
-      <PageHeader title="Hi, Alex" subtitle={`${MY_TEAM} · Harbor Spring Open · Pool A`} />
+      <PageHeader title="Hi, Alex" subtitle={<><TeamName /> · Harbor Spring Open · Pool A</>} />
 
       {live && (
         <section className="mb-4 overflow-hidden rounded-2xl bg-field p-6 text-white">
