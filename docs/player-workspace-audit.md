@@ -11,13 +11,13 @@ Follow-up to `organizer-workspace-audit.md`. Findings and fixes tracked in
 | My events | Reads `myRegistrations()`, groups upcoming and past, shows status chips, a start countdown and a summary count. Cancelling is a two-step confirm with a toast. | Registrations are keyed by session email in localStorage, so they are per-browser and per-account only. There is no roster, payment or organizer confirmation behind them. |
 | Home | Shows the next live game, the next game, a pool standing and the shared announcements feed. | Everything is static mock data — none of it reflects the signed-in player's registrations, schedule or actual results. The announcements feed also falls back to a hard-coded "Your 10:30 game moved from Field 3 to Field 1" whenever no organizer announcement exists. |
 | My schedule | Filters the seeded `games` list down to `MY_TEAM`. | Not connected to registrations, the event catalogue or any real fixture list. |
-| My team | Shows the seeded roster and a copyable join code. | The join code is a constant (`IRON-4821`); joining a team does nothing, and the roster is not editable. |
+| My team | The name, banner, tagline, accent, division and seed are editable and persisted per browser; roster and join code are still seeded. | The profile lives in localStorage, so it is per-device and disappears with cleared storage. The join code is a constant (`IRON-4821`), joining a team does nothing, and the roster is not editable. |
 | Find tournaments | Lists `openTournaments` and deep-links to `/events/<slug>` to register. | Every current entry has a slug, so the slug-less "Register" fallback (a toast) is unreachable until a slug-less tournament is added. |
 | Profile | Form fields with fixed defaults and a "Profile saved (mockup)" toast. | Nothing is read from or written to the session — the signed-in user's name never appears here. |
 
 ## Recommended next product slice
 
-1. Persist profiles against the session so Profile and the sidebar read the same record.
+1. Persist profiles against the session so Profile and the sidebar read the same record, and move the team profile onto that same record instead of its own localStorage key.
 2. Derive Home and My schedule from the player's registrations instead of the seeded `games` list.
 3. Give registrations a real lifecycle: team roster, division, captain approval, and withdrawal that the organizer can see.
 4. Replace the localStorage demo store with an API shared by both workspaces; keep local storage only as a clearly labelled demo mode.
