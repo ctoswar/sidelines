@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { DEFAULT_START_TIME, saveScheduleStartTime } from "@/lib/schedule-config";
 
 const steps = ["Basics", "Rules", "Divisions"] as const;
 
@@ -18,8 +19,16 @@ function Input({ label, ...p }: { label: string } & React.InputHTMLAttributes<HT
 export default function NewTournamentPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
 
-  const next = () => (step < 2 ? setStep(step + 1) : router.push("/organizer"));
+  const next = () => {
+    if (step < 2) {
+      setStep(step + 1);
+      return;
+    }
+    saveScheduleStartTime(startTime);
+    router.push("/organizer");
+  };
 
   return (
     <>
@@ -48,6 +57,15 @@ export default function NewTournamentPage() {
             <Input label="Hard cap (min)" defaultValue="90" />
             <Input label="Timeouts per half" defaultValue="1" />
             <Input label="Fields" defaultValue="3" />
+            <div>
+              <Input
+                label="First game starts"
+                type="time"
+                value={startTime}
+                onChange={(event) => setStartTime(event.target.value)}
+              />
+              <p className="mt-1 text-xs text-muted">Schedule times begin from this time.</p>
+            </div>
           </div>
         )}
         {step === 2 && (

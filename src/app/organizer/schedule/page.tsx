@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { useToast } from "@/components/dashboard/use-toast";
 import { games } from "@/lib/mock-data";
 import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
+import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
 
 const pill = (active: boolean) =>
   `rounded-full border px-3.5 py-1.5 text-sm font-bold transition-colors ${
@@ -20,14 +21,18 @@ export default function SchedulePage() {
   const { show, node } = useToast();
   const [division, setDivision] = useState<DivisionId | null>(null);
   const [tier, setTier] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState(games);
 
-  const gameNumberById = getFieldGameNumbers(games);
+  useEffect(() => {
+    setSchedule(applyScheduleStartTime(games, readScheduleStartTime()));
+  }, []);
 
   const tiers = divisions.find((d) => d.id === division)?.tiers ?? [];
-  const filtered = games.filter(
+  const filtered = schedule.filter(
     (g) => (!division || g.division === division) && (!tier || g.tier === tier)
   );
   const slots = [...new Set(filtered.map((g) => g.time))];
+  const gameNumberById = getFieldGameNumbers(schedule);
 
   const filterNote = division
     ? ` · ${divisionLabel(division)}${tier ? ` ${tier}` : ""}`
@@ -87,7 +92,7 @@ export default function SchedulePage() {
             <h2 className="mb-2 mt-4 font-bold">{t}</h2>
             <div className="grid gap-3 md:grid-cols-3">
               {filtered.filter((g) => g.time === t).map((g) => (
-                <Link key={g.id} href={`/organizer/score?game=${g.id}`} className="rounded-lg border border-line bg-card p-4">
+                <Link key={g.id} href={`/organizer/score?game=${g.id}&scheduleStart=${encodeURIComponent(readScheduleStartTime())}`} className="rounded-lg border border-line bg-card p-4">
                   <div className="flex justify-between text-sm text-muted">
                     <span>{fieldGameLabel(g, gameNumberById)}</span>
                     <StatusBadge status={g.status} />
