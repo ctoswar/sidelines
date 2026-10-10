@@ -7,7 +7,7 @@ import { getSession, signOut, type DemoSession } from "@/lib/auth";
 
 export interface NavItem { href: string; label: string; also?: string[] }
 
-export function Sidebar({ items, roleLabel, footer }: { items: NavItem[]; roleLabel: string; footer: string }) {
+export function Sidebar({ items, roleLabel, footer }: { items: NavItem[]; roleLabel: string; footer: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const [session, setSession] = useState<DemoSession | null>(null);
@@ -20,10 +20,6 @@ export function Sidebar({ items, roleLabel, footer }: { items: NavItem[]; roleLa
   // The session lives in localStorage, so it can only be read after mount —
   // reading it during render would not match the server-rendered HTML.
   useEffect(() => { setSession(getSession()); }, []);
-
-  // `footer` is the workspace context (team or org); the person is whoever
-  // actually signed in, not a hard-coded demo name.
-  const identity = session ? `${session.name} · ${footer}` : footer;
 
   const logOut = () => {
     signOut();
@@ -52,7 +48,13 @@ export function Sidebar({ items, roleLabel, footer }: { items: NavItem[]; roleLa
       </nav>
       <div className="hidden pt-6 text-sm text-muted md:mt-auto md:block">
         <p className="mb-2 text-xs uppercase tracking-wider">Signed in as</p>
-        <strong className="block text-fg">{identity}</strong>
+        {/* `footer` is the workspace context (team name or org) — a node, so the
+            player workspace can hand over a live team name. The person is
+            whoever actually signed in, not a hard-coded demo name. */}
+        <strong className="block text-fg">
+          {session && <>{session.name} · </>}
+          {footer}
+        </strong>
         <button
           type="button"
           onClick={logOut}

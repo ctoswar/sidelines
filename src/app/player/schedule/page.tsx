@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/dashboard/page-header";
+import { TeamName } from "@/components/dashboard/team-name";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { games, MY_TEAM } from "@/lib/mock-data";
 
@@ -8,7 +9,7 @@ export default function PlayerSchedulePage() {
   const mine = games.filter((g) => g.teamA === MY_TEAM || g.teamB === MY_TEAM);
   return (
     <>
-      <PageHeader title="My schedule" subtitle={`${MY_TEAM} · Saturday`} />
+      <PageHeader title="My schedule" subtitle={<><TeamName /> · Saturday</>} />
       <div className="space-y-3">
         {mine.map((g) => (
           <div key={g.id} className="flex items-center justify-between rounded-xl border border-line bg-card p-4">

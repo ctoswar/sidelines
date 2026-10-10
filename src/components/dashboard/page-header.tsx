@@ -1,4 +1,4 @@
-export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
+export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="dashboard-header mb-8 flex flex-wrap items-end justify-between gap-3">
       <div>
