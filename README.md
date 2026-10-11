@@ -1,4 +1,4 @@
-# Sidelines
+# Sidelines — Pickleball tournament operations
 
 Next.js (App Router) + TypeScript + Tailwind CSS starter with separate player and organizer areas.
 
@@ -10,7 +10,7 @@ npm run dev   # http://localhost:3000
 
 ## Routes
 - `/` public events feed (no login needed): search, filters, featured, upcoming/past, calendar view
-- `/events/[slug]` public event page with tabs: Info, Teams, Schedule, Spirit, Pools, Bracket, Stats, MVP, Standings, Crew (deep-link with `#schedule`, `#bracket`...)
+- `/events/[slug]` public event page with tabs: Info, Teams, Schedule, Sportsmanship, Pools, Bracket, Stats, MVP, Standings, Crew (deep-link with `#schedule`, `#bracket`...)
 - `/about` marketing page, `/login`
 - `/signup` role chooser, `/signup/player`, `/signup/organizer`
 - **Organizer** `/organizer` (tournaments), `/organizer/tournaments/new`, `/organizer/teams`, `/organizer/schedule`, `/organizer/scorekeepers`, `/organizer/score`

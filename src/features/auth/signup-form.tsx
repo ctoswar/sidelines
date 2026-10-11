@@ -20,6 +20,7 @@ export function SignupForm() {
     <>
       <GoogleButton onResult={setMessage} />
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <Field label="Username" placeholder="e.g. maya.reyes" autoComplete="username" spellCheck={false} autoCapitalize="none" error={errors.username?.message} {...register("username")} />
         <Field label="Full name" autoComplete="name" error={errors.name?.message} {...register("name")} />
         <Field label="Email" type="email" autoComplete="email" error={errors.email?.message} {...register("email")} />
         <Field label="Password" type="password" autoComplete="new-password" error={errors.password?.message} {...register("password")} />

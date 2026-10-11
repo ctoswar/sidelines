@@ -12,7 +12,7 @@ const items: NavItem[] = [
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="workspace-shell min-h-screen md:grid md:grid-cols-[248px_1fr]">
-      <Sidebar items={items} roleLabel="Organizer" footer="Harbor Ultimate" />
+       <Sidebar items={items} roleLabel="Organizer" footer="Harbor Pickleball" />
       <main className="workspace-main mx-auto w-full max-w-6xl p-5 md:p-10">{children}</main>
     </div>
   );

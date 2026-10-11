@@ -10,6 +10,7 @@ import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
 import { applySavedGameResults, subscribeToGameResults } from "@/lib/game-results";
+import { getGameCrew, subscribeToGameCrew, type GameCrew, type GameCrewMap } from "@/lib/game-crew";
 
 const pill = (active: boolean) =>
   `rounded-full border px-3.5 py-1.5 text-sm font-bold transition-colors ${
@@ -23,6 +24,8 @@ export default function SchedulePage() {
   const [division, setDivision] = useState<DivisionId | null>(null);
   const [tier, setTier] = useState<string | null>(null);
   const [schedule, setSchedule] = useState(games);
+  const [crew, setCrew] = useState<GameCrewMap>({});
+  const [selectedGame, setSelectedGame] = useState<(typeof games)[number] | null>(null);
 
   useEffect(() => {
     const refreshSchedule = () => {
@@ -30,6 +33,12 @@ export default function SchedulePage() {
     };
     refreshSchedule();
     return subscribeToGameResults(refreshSchedule);
+  }, []);
+
+  useEffect(() => {
+    const refreshCrew = () => setCrew(getGameCrew());
+    refreshCrew();
+    return subscribeToGameCrew(refreshCrew);
   }, []);
 
   const tiers = divisions.find((d) => d.id === division)?.tiers ?? [];
@@ -47,9 +56,9 @@ export default function SchedulePage() {
     <>
       <PageHeader
         title="Schedule"
-        subtitle={`Saturday · 3 fields · ${filtered.length} game${filtered.length === 1 ? "" : "s"}${filterNote} · tap a game to score it`}
+        subtitle={`Saturday · 3 courts · ${filtered.length} match${filtered.length === 1 ? "" : "es"}${filterNote} · tap a match to view its crew`}
       >
-        <button className="btn btn-pri" onClick={() => show("Schedule generated for 3 fields")}>Auto-fill schedule</button>
+         <button className="btn btn-pri" onClick={() => show("Schedule generated for 3 courts")}>Auto-fill schedule</button>
       </PageHeader>
 
       <div className="mb-2 flex flex-wrap items-center gap-2" role="group" aria-label="Division">
@@ -97,7 +106,12 @@ export default function SchedulePage() {
             <h2 className="mb-2 mt-4 font-bold">{t}</h2>
             <div className="grid gap-3 md:grid-cols-3">
               {filtered.filter((g) => g.time === t).map((g) => (
-                <Link key={g.id} href={`/organizer/score?game=${g.id}&scheduleStart=${encodeURIComponent(readScheduleStartTime())}`} className="rounded-lg border border-line bg-card p-4">
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setSelectedGame(g)}
+                  className="w-full rounded-lg border border-line bg-card p-4 text-left"
+                >
                   <div className="flex justify-between text-sm text-muted">
                     <span>{fieldGameLabel(g, gameNumberById)}</span>
                     <StatusBadge status={g.status} />
@@ -105,11 +119,46 @@ export default function SchedulePage() {
                   <p className="mt-2 font-bold">{g.teamA} vs {g.teamB}</p>
                   <p className="font-score text-3xl tabular-nums">{g.score || "–"}</p>
                   <p className="mt-2 text-xs uppercase tracking-wider text-muted">{divisionLabel(g.division)} · {g.tier}</p>
-                </Link>
+                </button>
               ))}
             </div>
           </section>
         ))
+      )}
+      {selectedGame && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => setSelectedGame(null)}>
+          <div className="schedule-crew-modal w-full max-w-md rounded-2xl border border-line bg-card p-6" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="dashboard-eyebrow">Game crew</p>
+                <h2 className="mt-2 font-score text-3xl font-bold leading-none">{selectedGame.teamA} vs {selectedGame.teamB}</h2>
+                <p className="mt-2 text-sm text-muted">{selectedGame.time} · {selectedGame.field} · {fieldGameLabel(selectedGame, gameNumberById)}</p>
+              </div>
+              <button className="btn !px-3 !py-1" onClick={() => setSelectedGame(null)} aria-label="Close game crew popup">✕</button>
+            </div>
+
+            <div className="schedule-crew-list mt-6">
+              {(["scorekeeper", "umpire"] as const).map((role) => (
+                <div key={role} className="schedule-crew-row">
+                  <span className={`scorekeeper-role ${role === "scorekeeper" ? "scorekeeper-role-scorer" : "scorekeeper-role-umpire"}`}>
+                    {role === "scorekeeper" ? "Scorekeeper" : "Umpire"}
+                  </span>
+                  <strong>{crew[selectedGame.id]?.[role] || "Not assigned"}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button className="btn flex-1" onClick={() => setSelectedGame(null)}>Close</button>
+              <Link
+                className="btn btn-pri flex-1 text-center"
+                href={`/organizer/score?game=${selectedGame.id}&scheduleStart=${encodeURIComponent(readScheduleStartTime())}`}
+              >
+                Open scorecard
+              </Link>
+            </div>
+          </div>
+        </div>
       )}
       {node}
     </>

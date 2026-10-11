@@ -1,5 +1,4 @@
-// Tournament division taxonomy: pick a division (Mens / Womens / Mixed),
-// then a skill tier within it — like a tournament category poster.
+// Pickleball tournament taxonomy: choose a division, then a DUPR-style skill tier.
 
 export type DivisionId = "mens" | "womens" | "mixed";
 
@@ -10,9 +9,9 @@ export interface Division {
 }
 
 export const divisions: Division[] = [
-  { id: "mens", label: "Mens", tiers: ["Beginners", "Low Novice", "High Novice"] },
-  { id: "womens", label: "Womens", tiers: ["Beginners", "Low Novice", "High Novice"] },
-  { id: "mixed", label: "Mixed", tiers: ["Beginners", "Novice"] },
+  { id: "mens", label: "Men's", tiers: ["3.0", "3.5", "4.0+"] },
+  { id: "womens", label: "Women's", tiers: ["3.0", "3.5", "4.0+"] },
+  { id: "mixed", label: "Mixed", tiers: ["3.0", "3.5", "4.0+"] },
 ];
 
 export const divisionLabel = (id: DivisionId) => divisions.find((d) => d.id === id)?.label ?? id;

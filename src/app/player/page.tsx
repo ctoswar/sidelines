@@ -28,7 +28,7 @@ export default function PlayerHome() {
       <div className="grid gap-4 md:grid-cols-2">
         {next && (
           <section className="rounded-xl border border-line bg-card p-5">
-            <p className="text-sm font-bold text-brand">Next game</p>
+             <p className="text-sm font-bold text-brand">Next match</p>
             <p className="mt-2 font-score text-4xl font-bold">{next.time} · {next.field}</p>
             <p className="text-muted">{next.teamA} vs {next.teamB}</p>
           </section>

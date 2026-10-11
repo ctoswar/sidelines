@@ -10,11 +10,7 @@ import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
 import { GameSelect } from "@/components/dashboard/game-select";
 import type { Game } from "@/types";
-
-type Crew = {
-  scorekeeper: string;
-  umpire: string;
-};
+import { getDefaultGameCrew, getGameCrew, saveGameCrew, type GameCrew } from "@/lib/game-crew";
 
 type QrCode = {
   gameId: string;
@@ -30,36 +26,29 @@ const roleStyles = {
   Umpire: "scorekeeper-role scorekeeper-role-umpire",
 } as const;
 
-const initialCrew = keepers.reduce<Record<string, Crew>>((result, keeper) => {
-  if (!keeper.gameId) return result;
-  const current = result[keeper.gameId] ?? { scorekeeper: "", umpire: "" };
-  result[keeper.gameId] = keeper.role === "Scorer"
-    ? { ...current, scorekeeper: keeper.name }
-    : { ...current, umpire: keeper.name };
-  return result;
-}, {});
+const initialCrew = getDefaultGameCrew();
 
 const defaultGameId = keepers.find((keeper) => keeper.gameId)?.gameId ?? games[0]?.id ?? "";
 
 export default function ScorekeepersPage() {
   const { show, node } = useToast();
   const [schedule, setSchedule] = useState(games);
-  const [crew, setCrew] = useState<Record<string, Crew>>(initialCrew);
+  const [crew, setCrew] = useState<Record<string, GameCrew>>(initialCrew);
   const [qrQueue, setQrQueue] = useState<QrCode[]>([]);
   const [selectedGameId, setSelectedGameId] = useState(defaultGameId);
 
   useEffect(() => {
     setSchedule(applyScheduleStartTime(games, readScheduleStartTime()));
+    setCrew(getGameCrew());
   }, []);
 
   const gameNumberById = getFieldGameNumbers(schedule);
   const selectedGame = schedule.find((game) => game.id === selectedGameId) ?? schedule[0];
 
-  const updateName = (gameId: string, role: keyof Crew, name: string) => {
-    setCrew((current) => ({
-      ...current,
-      [gameId]: { ...(current[gameId] ?? { scorekeeper: "", umpire: "" }), [role]: name },
-    }));
+  const updateName = (gameId: string, role: keyof GameCrew, name: string) => {
+    const nextCrew = { ...(crew[gameId] ?? { scorekeeper: "", umpire: "" }), [role]: name };
+    setCrew((current) => ({ ...current, [gameId]: nextCrew }));
+    saveGameCrew(gameId, nextCrew);
     setQrQueue((currentQueue) => currentQueue.filter((code) => code.gameId !== gameId));
   };
 

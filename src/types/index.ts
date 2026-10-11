@@ -16,7 +16,7 @@ export interface Keeper {
 }
 export interface Tournament { name: string; meta: string; status: "Live" | "Draft" }
 
-export interface RosterPlayer { name: string; number: number; position: "Handler" | "Cutter" }
+export interface RosterPlayer { name: string; number: number; position: "Singles" | "Doubles" }
 export interface OpenTournament { name: string; meta: string; fee: string; spots: string; slug?: string }
 
 export interface EventItem {

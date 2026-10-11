@@ -11,8 +11,8 @@ const score = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "Sidelines – Tournament scoring for ultimate",
-  description: "Score games, share live results and keep standings up to date.",
+  title: "Sidelines – Pickleball tournament scoring",
+  description: "Score pickleball matches, share live results and keep standings up to date.",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };

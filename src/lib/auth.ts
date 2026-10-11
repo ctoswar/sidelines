@@ -3,7 +3,7 @@ import type { LoginInput, OrganizerSignupInput, PlayerSignupInput } from "@/lib/
 export type Role = "player" | "organizer";
 export type AuthResult = { ok: true; message: string; role: Role } | { ok: false; message: string };
 
-export type DemoSession = { email: string; name: string; role: Role };
+export type DemoSession = { email: string; name: string; username?: string; role: Role };
 type DemoAccount = DemoSession & { password: string };
 const ACCOUNTS_KEY = "sidelines.demo.accounts";
 const SESSION_KEY = "sidelines.demo.session";
@@ -43,18 +43,19 @@ export async function signIn(input: LoginInput): Promise<AuthResult> {
   if (account && account.password !== input.password) return { ok: false, message: "That password does not match this account." };
   // Keep the original demo shortcut for first-time testing, while real signups persist below.
   const role: Role = account?.role ?? (input.email.toLowerCase().startsWith("player") ? "player" : "organizer");
-  const session = { email: account?.email ?? input.email, name: account?.name ?? "Demo user", role } satisfies DemoSession;
+  const session = { email: account?.email ?? input.email, name: account?.name ?? "Demo user", username: account?.username, role } satisfies DemoSession;
   write(SESSION_KEY, session);
   return { ok: true, role, message: `Logged in as ${session.email}.` };
 }
 
 export async function signUp(role: Role, input: PlayerSignupInput | OrganizerSignupInput): Promise<AuthResult> {
   await new Promise((r) => setTimeout(r, 500));
-  const account = { email: input.email, name: input.name, password: input.password, role } satisfies DemoAccount;
+  const account = { email: input.email, name: input.name, username: input.username, password: input.password, role } satisfies DemoAccount;
   const accounts = read<DemoAccount[]>(ACCOUNTS_KEY, []);
   if (accounts.some((item) => item.email.toLowerCase() === account.email.toLowerCase())) return { ok: false, message: "An account with that email already exists. Try logging in." };
+  if (accounts.some((item) => item.username?.toLowerCase() === account.username.toLowerCase())) return { ok: false, message: "That username is already taken. Try another one." };
   write(ACCOUNTS_KEY, [...accounts, account]);
-  write(SESSION_KEY, { email: account.email, name: account.name, role } satisfies DemoSession);
+  write(SESSION_KEY, { email: account.email, name: account.name, username: account.username, role } satisfies DemoSession);
   return { ok: true, role, message: "Account created. You are now signed in." };
 }
 

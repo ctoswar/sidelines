@@ -2,13 +2,13 @@ import type { EventItem } from "@/types";
 import { getEvent } from "./events-data";
 
 export type MatchStatus = "final" | "live" | "scheduled";
-export interface TeamInfo { name: string; pool: "A" | "B"; seed: number; roster: number; spirit: number; color: string }
+export interface TeamInfo { name: string; pool: "A" | "B"; seed: number; roster: number; sportsmanship: number; color: string }
 export interface MatchInfo {
   id: string; date: string; time: string; field: string; round: string;
   a: string; b: string; sa: number | null; sb: number | null; status: MatchStatus;
 }
 export interface PoolRow { team: string; pool: "A" | "B"; w: number; l: number; pf: number; pa: number }
-export interface PlayerStat { name: string; team: string; goals: number; assists: number; ds: number }
+export interface PlayerStat { name: string; team: string; points: number; aces: number; winners: number }
 export interface Mvp { name: string; team: string; score: number; votes: number }
 export interface Crew { role: string; people: string[] }
 export interface EventDetail {
@@ -70,7 +70,7 @@ export function getEventDetail(slug: string): EventDetail | null {
 
   const teams: TeamInfo[] = NAMES.slice(0, e.teams).map((name, i) => ({
     name, pool: i % 2 ? "B" : "A", seed: i + 1, roster: 11 + Math.floor(r() * 5),
-    spirit: Math.round((10.5 + r() * 3.5) * 10) / 10, color: COLORS[i % COLORS.length],
+    sportsmanship: Math.round((10.5 + r() * 3.5) * 10) / 10, color: COLORS[i % COLORS.length],
   }));
   const bySeed = new Map(teams.map((t) => [t.name, t]));
 
@@ -86,11 +86,11 @@ export function getEventDetail(slug: string): EventDetail | null {
 
   // ---- statuses and scores ----
   const aWins = (a: TeamInfo, b: TeamInfo) => r() < Math.min(0.85, Math.max(0.15, 0.5 + (b.seed - a.seed) * 0.035));
-  const finalScore = (a: TeamInfo, b: TeamInfo) => { const lose = 5 + Math.floor(r() * 9); return aWins(a, b) ? [15, lose] : [lose, 15]; };
+  const finalScore = (a: TeamInfo, b: TeamInfo) => { const lose = 5 + Math.floor(r() * 6); return aWins(a, b) ? [11, lose] : [lose, 11]; };
   const total = plan.games.length, doneCount = e.live ? Math.floor(total * 0.55) : e.status === "past" ? total : 0;
 
   const matches: MatchInfo[] = plan.games.map((g, i) => {
-    const base = { id: `p${i + 1}`, date: dateFor(Math.floor(g.slot / SLOTS.length)), time: SLOTS[g.slot % SLOTS.length], field: `Field ${g.field + 1}`, round: `Pool ${g.a.pool} · Round ${g.round}`, a: g.a.name, b: g.b.name };
+    const base = { id: `p${i + 1}`, date: dateFor(Math.floor(g.slot / SLOTS.length)), time: SLOTS[g.slot % SLOTS.length], field: `Court ${g.field + 1}`, round: `Pool ${g.a.pool} · Round ${g.round}`, a: g.a.name, b: g.b.name };
     if (i < doneCount) { const [sa, sb] = finalScore(g.a, g.b); return { ...base, sa, sb, status: "final" as const }; }
     if (e.live && i < doneCount + 3) return { ...base, sa: 4 + Math.floor(r() * 8), sb: 3 + Math.floor(r() * 8), status: "live" as const };
     return { ...base, sa: null, sb: null, status: "scheduled" as const };
@@ -116,12 +116,12 @@ export function getEventDetail(slug: string): EventDetail | null {
   };
   const known = e.status === "past";
   const lab = (p: "A" | "B", i: number) => (known ? pools[p][i].team : `${i + 1}${i ? "nd" : "st"} Pool ${p}`);
-  const sf1 = mk("sf1", "Semifinal", SLOTS[1], "Field 1", lab("A", 0), lab("B", 1));
-  const sf2 = mk("sf2", "Semifinal", SLOTS[1], "Field 2", lab("B", 0), lab("A", 1));
+  const sf1 = mk("sf1", "Semifinal", SLOTS[1], "Court 1", lab("A", 0), lab("B", 1));
+  const sf2 = mk("sf2", "Semifinal", SLOTS[1], "Court 2", lab("B", 0), lab("A", 1));
   const win = (m: MatchInfo) => (m.sa! > m.sb! ? m.a : m.b), lose = (m: MatchInfo) => (m.sa! > m.sb! ? m.b : m.a);
   const bracket = known
-    ? [sf1, sf2, mk("third", "Third place", SLOTS[3], "Field 2", lose(sf1), lose(sf2)), mk("final", "Final", SLOTS[4], "Field 1", win(sf1), win(sf2))]
-    : [sf1, sf2, mk("third", "Third place", SLOTS[3], "Field 2", "Loser SF1", "Loser SF2"), mk("final", "Final", SLOTS[4], "Field 1", "Winner SF1", "Winner SF2")];
+    ? [sf1, sf2, mk("third", "Third place", SLOTS[3], "Court 2", lose(sf1), lose(sf2)), mk("final", "Final", SLOTS[4], "Court 1", win(sf1), win(sf2))]
+    : [sf1, sf2, mk("third", "Third place", SLOTS[3], "Court 2", "Loser SF1", "Loser SF2"), mk("final", "Final", SLOTS[4], "Court 1", "Winner SF1", "Winner SF2")];
 
   // ---- overall standings ----
   let overall: PoolRow[];
@@ -135,32 +135,32 @@ export function getEventDetail(slug: string): EventDetail | null {
   // ---- players, MVP ----
   const scale = e.live ? 0.55 : 1;
   const players: PlayerStat[] = hasResults
-    ? teams.flatMap((t, i) => [0, 1].map((k) => ({ name: PEOPLE[(i * 2 + k) % PEOPLE.length], team: t.name, goals: Math.round((4 + r() * 10) * scale), assists: Math.round((3 + r() * 9) * scale), ds: Math.round((1 + r() * 6) * scale) })))
+    ? teams.flatMap((t, i) => [0, 1].map((k) => ({ name: PEOPLE[(i * 2 + k) % PEOPLE.length], team: t.name, points: Math.round((4 + r() * 10) * scale), aces: Math.round((1 + r() * 5) * scale), winners: Math.round((3 + r() * 8) * scale) })))
     : [];
-  const mvp: Mvp[] = [...players].sort((p, q) => q.goals + q.assists + q.ds - (p.goals + p.assists + p.ds)).slice(0, 6)
-    .map((p) => ({ name: p.name, team: p.team, score: p.goals + p.assists + p.ds, votes: 20 + Math.floor(r() * 120) }));
+  const mvp: Mvp[] = [...players].sort((p, q) => q.points + q.aces + q.winners - (p.points + p.aces + p.winners)).slice(0, 6)
+    .map((p) => ({ name: p.name, team: p.team, score: p.points + p.aces + p.winners, votes: 20 + Math.floor(r() * 120) }));
 
   // ---- text + meta ----
   const division = e.tags.find((t) => ["Open", "Women", "Mixed"].includes(t)) ?? "Open";
   const setting = (e.tags.find((t) => ["Outdoor", "Indoor", "Beach"].includes(t)) ?? "Outdoor").toLowerCase();
-  const about = `${e.name} brings ${e.teams} ${division.toLowerCase()} division teams to ${e.city}, ${e.country}, for ${isTournament ? `${span} days of` : "a season of"} ${setting} ultimate. Expect competitive pool play, a knockout finals day with live scores on this page, and a spirit circle after every game. Players, captains and spectators can follow every field from their phone without an account.`;
-  const venue = { name: `${e.city} Ultimate Fields`, address: `${e.city}, ${e.country}`, mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.city} ultimate frisbee fields ${e.country}`)}` };
+  const about = `${e.name} brings ${e.teams} ${division.toLowerCase()} division teams to ${e.city}, ${e.country}, for ${isTournament ? `${span} days of` : "a season of"} ${setting} pickleball. Expect competitive pool play, a knockout finals day with live scores on this page, and a sportsmanship moment after every match. Players, captains and spectators can follow every court from their phone without an account.`;
+  const venue = { name: `${e.city} Pickleball Courts`, address: `${e.city}, ${e.country}`, mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.city} pickleball courts ${e.country}`)}` };
 
   return {
     event: e, about, venue, tz: { label: `GMT+${tz.offset}`, offset: tz.offset }, hasResults, days: isTournament ? span : poolSessions + 1, fields,
     facts: [
       { label: "Format", value: `${division} division · ${setting}` },
       { label: "Pools", value: `2 pools of ${e.teams / 2}, then knockout` },
-      { label: "Game rules", value: "To 15, win by 2 · soft cap 75 min · hard cap 90 min" },
+      { label: "Match rules", value: "First to 11, win by 2 · standard pickleball scoring" },
       { label: "Entry fee", value: FEE[e.code] ?? "Contact organizers" },
-      { label: "Spirit", value: "Scored 0–20 after every game" },
+      { label: "Sportsmanship", value: "Scored 0–20 after every match" },
       { label: "Local time", value: `${tz.city} (GMT+${tz.offset})` },
     ],
-    announcements: e.live ? ["Field 3 has moved next to the spirit tent. Check the schedule tab for updated fields.", "Lightning rule is active. Games pause for 30 minutes after the last strike."] : e.status === "past" ? ["Thanks to every team and volunteer. Final standings and MVP results are now posted."] : ["Registration is open. Rosters lock one week before the first pull.", "The full schedule is published 3 days before the event."],
+     announcements: e.live ? ["Court 3 has moved next to the welcome tent. Check the schedule tab for updated courts.", "Weather rule is active. Outdoor matches pause during lightning or unsafe court conditions."] : e.status === "past" ? ["Thanks to every team and volunteer. Final standings and MVP results are now posted."] : ["Registration is open. Rosters lock one week before the first serve.", "The full schedule is published 3 days before the event."],
     teams, matches: [...matches, ...bracket], pools, overall, bracket, players, mvp,
     crew: [
       { role: "Tournament director", people: [PEOPLE[0]] }, { role: "Tournament assistants", people: [PEOPLE[1], PEOPLE[2]] },
-      { role: "Scorekeepers", people: [PEOPLE[3], PEOPLE[4], PEOPLE[5], PEOPLE[6]] }, { role: "Spirit coordinators", people: [PEOPLE[7], PEOPLE[8]] },
+      { role: "Scorekeepers & officials", people: [PEOPLE[3], PEOPLE[4], PEOPLE[5], PEOPLE[6]] }, { role: "Sportsmanship leads", people: [PEOPLE[7], PEOPLE[8]] },
       { role: "Medical", people: [PEOPLE[9]] }, { role: "Media and live stream", people: [PEOPLE[10], PEOPLE[11]] },
     ],
   };
