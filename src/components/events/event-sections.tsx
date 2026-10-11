@@ -56,7 +56,7 @@ export function InfoTab({ d, mode }: PM) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[["Teams", d.event.teams], ["Games", gamesTotal], ["Fields", d.fields], ["Days", d.days]].map(([k, v]) => (
+        {[["Teams", d.event.teams], ["Matches", gamesTotal], ["Courts", d.fields], ["Days", d.days]].map(([k, v]) => (
           <div key={k} className="event-reveal rounded-xl border border-line bg-card p-4 text-center">
             <p className="font-score text-4xl font-bold leading-none tabular-nums">{v}</p>
             <p className="mt-1 text-sm text-muted">{k}</p>
@@ -130,7 +130,7 @@ export function TeamsTab({ d }: P) {
               <p className="font-bold">{t.name}</p>
               <p className="text-sm text-muted">Pool {t.pool} · Seed {t.seed} · {t.roster} players</p>
             </div>
-            {d.hasResults && <span className="text-right text-xs text-muted">Spirit<br /><b className="text-base text-fg tabular-nums">{t.spirit}</b></span>}
+            {d.hasResults && <span className="text-right text-xs text-muted">Sportsmanship<br /><b className="text-base text-fg tabular-nums">{t.sportsmanship}</b></span>}
           </div>
         ))}
       </div>
@@ -153,7 +153,7 @@ export function ScheduleTab({ d, mode }: PM) {
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select aria-label="Team" value={team} onChange={(e) => setTeam(e.target.value)} className="inp !w-auto"><option>All</option>{d.teams.map((t) => <option key={t.name}>{t.name}</option>)}</select>
-        <select aria-label="Field" value={field} onChange={(e) => setField(e.target.value)} className="inp !w-auto"><option>All</option>{fields.map((f) => <option key={f}>{f}</option>)}</select>
+        <select aria-label="Court" value={field} onChange={(e) => setField(e.target.value)} className="inp !w-auto"><option>All</option>{fields.map((f) => <option key={f}>{f}</option>)}</select>
         {(["all", "live", "scheduled", "final"] as const).map((s) => (
           <button key={s} onClick={() => setStatus(s)} aria-pressed={status === s} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium capitalize ${status === s ? "border-brand bg-brand text-onbrand" : "border-line"}`}>{s === "scheduled" ? "Upcoming" : s}</button>
         ))}
@@ -169,21 +169,21 @@ export function ScheduleTab({ d, mode }: PM) {
   );
 }
 
-// ---------- Spirit ----------
-export function SpiritTab({ d }: P) {
+// ---------- Sportsmanship ----------
+export function SportsmanshipTab({ d }: P) {
   if (!d.hasResults) return noResults;
-  const ranked = [...d.teams].sort((a, b) => b.spirit - a.spirit);
+  const ranked = [...d.teams].sort((a, b) => b.sportsmanship - a.sportsmanship);
   return (
     <Card>
-      <H>Spirit ranking</H>
-      <p className="mb-4 text-sm text-muted">Average score out of 20, from opponents after each game.</p>
+       <H>Sportsmanship ranking</H>
+        <p className="mb-4 text-sm text-muted">Average score out of 20, from opponents after each match.</p>
       <ol className="space-y-3">
         {ranked.map((t, i) => (
           <li key={t.name} className="grid grid-cols-[1.5rem_7rem_1fr_3rem] items-center gap-3">
             <span className="font-score text-xl text-muted tabular-nums">{i + 1}</span>
             <span className="truncate font-medium">{t.name}</span>
-            <span className="h-2.5 overflow-hidden rounded-full bg-line"><span className="block h-full rounded-full bg-brand" style={{ width: `${(t.spirit / 20) * 100}%` }} /></span>
-            <span className="text-right font-bold tabular-nums">{t.spirit}</span>
+            <span className="h-2.5 overflow-hidden rounded-full bg-line"><span className="block h-full rounded-full bg-brand" style={{ width: `${(t.sportsmanship / 20) * 100}%` }} /></span>
+            <span className="text-right font-bold tabular-nums">{t.sportsmanship}</span>
           </li>
         ))}
       </ol>
@@ -259,7 +259,7 @@ export function BracketTab({ d, mode }: PM) {
 // ---------- Stats ----------
 export function StatsTab({ d }: P) {
   if (!d.hasResults) return noResults;
-  const boards = [["Goals", "goals"], ["Assists", "assists"], ["Defensive blocks", "ds"]] as const;
+  const boards = [["Points won", "points"], ["Aces", "aces"], ["Winners", "winners"]] as const;
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {boards.map(([title, key]) => {
@@ -301,7 +301,7 @@ export function MvpTab({ d }: P) {
         {d.mvp.map((m, i) => (
           <div key={m.name} className={`rounded-xl border bg-card p-4 ${closed && i === top ? "border-flag" : "border-line"}`}>
             <div className="flex items-center justify-between">
-              <div><p className="font-bold">{m.name}</p><p className="text-sm text-muted">{m.team} · {m.score} contributions</p></div>
+              <div><p className="font-bold">{m.name}</p><p className="text-sm text-muted">{m.team} · {m.score} match impact</p></div>
               {closed && i === top && <span className="rounded-full bg-flag px-3 py-0.5 text-xs font-bold text-white">MVP</span>}
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${(votes[i] / total) * 100}%` }} /></div>

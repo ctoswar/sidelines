@@ -3,15 +3,15 @@
 import { useState } from "react";
 
 type Side = "a" | "b";
-const TARGET = 15;
+const TARGET = 11;
 
 export function LiveScoreboard() {
-  const [score, setScore] = useState({ a: 11, b: 9 });
+  const [score, setScore] = useState({ a: 8, b: 6 });
   const [bumped, setBumped] = useState<Side | null>(null);
-  const finished = score.a >= TARGET || score.b >= TARGET;
+  const finished = (score.a >= TARGET && score.a - score.b >= 2) || (score.b >= TARGET && score.b - score.a >= 2);
 
-  function addGoal(side: Side) {
-    setScore((s) => (s.a >= TARGET || s.b >= TARGET ? { a: 11, b: 9 } : { ...s, [side]: s[side] + 1 }));
+  function addPoint(side: Side) {
+    setScore((s) => ((s.a >= TARGET && s.a - s.b >= 2) || (s.b >= TARGET && s.b - s.a >= 2) ? { a: 8, b: 6 } : { ...s, [side]: s[side] + 1 }));
     setBumped(null);
     requestAnimationFrame(() => setBumped(side));
   }
@@ -26,9 +26,9 @@ export function LiveScoreboard() {
       <div className="flex items-center justify-between bg-black/25 px-5 py-3 text-sm">
         <span className="flex items-center gap-2 font-bold">
           <span className="pulse h-2.5 w-2.5 rounded-full bg-[#ff5a3c]" />
-          Live · Field 3
+           Live · Court 3
         </span>
-        <span className="text-white/70">Game to {TARGET}</span>
+           <span className="text-white/70">First to {TARGET} · win by 2</span>
       </div>
 
       <div className="grid grid-cols-2 divide-x divide-white/15">
@@ -42,18 +42,18 @@ export function LiveScoreboard() {
               {score[side]}
             </p>
             <button
-              onClick={() => addGoal(side)}
+               onClick={() => addPoint(side)}
               className="mt-3 w-full rounded-md bg-white py-3 font-bold text-[#14213d]"
-              aria-label={`Add goal for ${name}`}
+               aria-label={`Add point for ${name}`}
             >
-              +1 goal
+               +1 point
             </button>
           </div>
         ))}
       </div>
 
       <div className="flex justify-between bg-black/25 px-5 py-3 text-sm text-white/75">
-        <span>Soft cap in 12:40</span>
+         <span>Match clock 12:40</span>
         <span>{finished ? "Final. Tap again to reset" : "Tap a button to try it"}</span>
       </div>
     </div>

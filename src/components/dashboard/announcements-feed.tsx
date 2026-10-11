@@ -22,7 +22,7 @@ export function AnnouncementsFeed() {
       <section className="rounded-xl border border-line bg-card p-5">
         <p className="font-bold">Heads up</p>
         <p className="mt-1 text-muted">
-          Your 10:30 game moved from Field 3 to Field 1. Check in with your captain 15 minutes before the pull.
+          Your 10:30 match moved from Court 3 to Court 1. Check in with your partner 15 minutes before the serve.
         </p>
       </section>
     );

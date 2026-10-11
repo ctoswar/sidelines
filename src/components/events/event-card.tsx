@@ -34,7 +34,7 @@ export function EventCard({ event: e, showFeatured = false, variant = "row", ind
     return (
       <Link href={`/events/${e.slug}`} className="event-spotlight event-spotlight-main" style={style}>
         <div className="event-spotlight-orbit" aria-hidden="true" />
-        <div className="event-spotlight-topline"><span>{e.live ? "Live from the field" : "Featured event"}</span><span>0{index}</span></div>
+        <div className="event-spotlight-topline"><span>{e.live ? "Live from the court" : "Featured event"}</span><span>0{index}</span></div>
         <div className="event-spotlight-mark" aria-hidden="true">{e.monogram}</div>
         <div className="event-spotlight-copy">
           <p className="event-kicker">{e.tags[0]} / {e.tags[1]}</p>

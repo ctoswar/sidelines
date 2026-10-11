@@ -71,7 +71,7 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
         <Link href="/organizer/events" className="text-sm text-muted hover:text-fg">← All events</Link>
         <h1 className="font-score text-4xl font-bold tracking-tight">{detail.event.name}</h1>
         <p className="mt-1 text-muted">
-          {detail.venue.name} · {detail.tz.label} · {detail.fields} fields
+          {detail.venue.name} · {detail.tz.label} · {detail.fields} courts
         </p>
       </div>
 
@@ -138,7 +138,7 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
         <form onSubmit={publish} className="mb-4 rounded-lg border border-line bg-card p-4">
           <input
             className="inp mb-2 w-full"
-            placeholder="Title — e.g. Field 2 closed until 14:00"
+          placeholder="Title — e.g. Court 2 closed until 14:00"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={80}

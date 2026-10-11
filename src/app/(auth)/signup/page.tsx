@@ -4,8 +4,8 @@ import { AuthShell } from "@/features/auth/auth-shell";
 export const metadata = { title: "Sign up – Sidelines" };
 
 const roles = [
-  { href: "/signup/player", title: "I'm a player", body: "Join a team, see your schedule and follow live scores." },
-  { href: "/signup/organizer", title: "I'm an organizer", body: "Create tournaments, manage teams and invite scorekeepers." },
+  { href: "/signup/player", title: "I'm a player", body: "Join a pickleball team, see your schedule and follow live scores." },
+  { href: "/signup/organizer", title: "I'm an organizer", body: "Create pickleball tournaments, manage teams and invite scorekeepers." },
 ];
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {

@@ -29,13 +29,14 @@ export function OrganizerSignupForm() {
     <>
       <GoogleButton onResult={setMessage} />
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <Field label="Username" placeholder="e.g. harbor.director" autoComplete="username" spellCheck={false} autoCapitalize="none" error={errors.username?.message} {...register("username")} />
         <Field label="Full name" autoComplete="name" error={errors.name?.message} {...register("name")} />
         <Field label="Email" type="email" autoComplete="email" error={errors.email?.message} {...register("email")} />
         <Field label="Password" type="password" autoComplete="new-password" error={errors.password?.message} {...register("password")} />
         <Field label="Confirm password" type="password" autoComplete="new-password" error={errors.confirm?.message} {...register("confirm")} />
         <hr className="border-line" />
         <p className="font-bold">Organization details</p>
-        <Field label="Organization name" placeholder="Harbor Ultimate" error={errors.org?.message} {...register("org")} />
+        <Field label="Organization name" placeholder="Harbor Pickleball" error={errors.org?.message} {...register("org")} />
         <SelectField label="Organization type" options={orgTypes} error={errors.orgType?.message} {...register("orgType")} />
         <Field label="Your role" placeholder="Tournament director" error={errors.title?.message} {...register("title")} />
         <SelectField label="Tournaments you run per year" options={volumes} error={errors.volume?.message} {...register("volume")} />

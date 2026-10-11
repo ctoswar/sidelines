@@ -51,12 +51,10 @@ export default function NewTournamentPage() {
         )}
         {step === 1 && (
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Game to" defaultValue="15" />
+            <Input label="Game to" defaultValue="11" />
             <Input label="Win by" defaultValue="2" />
-            <Input label="Soft cap (min)" defaultValue="75" />
-            <Input label="Hard cap (min)" defaultValue="90" />
-            <Input label="Timeouts per half" defaultValue="1" />
-            <Input label="Fields" defaultValue="3" />
+            <Input label="Timeouts per game" defaultValue="2" />
+            <Input label="Courts" defaultValue="3" />
             <div>
               <Input
                 label="First game starts"
@@ -64,7 +62,7 @@ export default function NewTournamentPage() {
                 value={startTime}
                 onChange={(event) => setStartTime(event.target.value)}
               />
-              <p className="mt-1 text-xs text-muted">Schedule times begin from this time.</p>
+               <p className="mt-1 text-xs text-muted">Court times begin from this time.</p>
             </div>
           </div>
         )}

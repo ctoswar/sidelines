@@ -161,7 +161,7 @@ export function TeamView() {
                 value={draft.tagline}
                 maxLength={90}
                 autoComplete="off"
-                placeholder="Chasing every disc"
+                placeholder="Dinking past the kitchen"
                 onChange={(e) => patch({ tagline: e.target.value })}
               />
             </Field>
@@ -274,7 +274,7 @@ export function TeamView() {
 
       <div className="overflow-x-auto rounded-lg border border-line bg-card">
         <table className="w-full text-left">
-          <thead className="text-sm text-muted"><tr><th className="p-3">#</th><th className="p-3">Player</th><th className="p-3">Position</th></tr></thead>
+           <thead className="text-sm text-muted"><tr><th className="p-3">#</th><th className="p-3">Player</th><th className="p-3">Format</th></tr></thead>
           <tbody className="divide-y divide-line">
             {roster.map((p) => (
               <tr key={p.name}><td className="p-3 tabular-nums">{p.number}</td><td className="p-3 font-bold">{p.name}</td><td className="p-3 text-muted">{p.position}</td></tr>

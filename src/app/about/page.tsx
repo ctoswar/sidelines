@@ -4,16 +4,16 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 const features = [
-  { title: "Score from the sideline", body: "Large tap targets, one-tap undo, timeouts and soft or hard cap timers. Works offline and syncs when you get signal back.", border: "border-brand" },
-  { title: "Spectators need no account", body: "Share one link or QR code. Anyone can follow live games, schedules and field changes from their phone.", border: "border-flag" },
+  { title: "Score from the sideline", body: "Large tap targets, one-tap undo, timeouts and win-by-two scoring. Works offline and syncs when you get signal back.", border: "border-brand" },
+  { title: "Spectators need no account", body: "Share one link or QR code. Anyone can follow live matches, schedules and court changes from their phone.", border: "border-flag" },
   { title: "Standings that fix themselves", body: "Edit a score and pool tables, tie-breakers and bracket seeding recalculate instantly.", border: "border-brand" },
 ];
 
 const steps = [
   { title: "Create the tournament", body: "Name it, pick divisions and game rules." },
   { title: "Add teams", body: "Type them in or import a CSV roster." },
-  { title: "Invite scorekeepers", body: "Assign each one to a field by email." },
-  { title: "Share the live link", body: "Post it once. Everyone stays up to date." },
+  { title: "Invite scorekeepers", body: "Assign each one to a court by email." },
+  { title: "Share the live link", body: "Post it once. Everyone follows every rally." },
 ];
 
 export default function HomePage() {
@@ -23,13 +23,13 @@ export default function HomePage() {
       <main className="about-page">
         <section className="about-hero mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_1fr]">
           <div>
-            <p className="about-eyebrow">The tournament operating system</p>
+            <p className="about-eyebrow">The pickleball tournament operating system</p>
             <h1 className="mt-3 font-score text-6xl font-bold leading-[0.9] tracking-tight sm:text-8xl">
-              Every point counted.<br /><em>Every field in sync.</em>
+              Every point counted.<br /><em>Every court in sync.</em>
             </h1>
             <p className="mt-6 max-w-[46ch] text-lg leading-relaxed text-muted">
-              Run your ultimate tournament from the sideline. Scorekeepers tap a goal, and standings,
-              brackets and spectator pages update before the next pull.
+              Run your pickleball tournament from the sideline. Scorekeepers tap a point, and standings,
+              brackets and spectator pages update before the next serve.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signup" className="btn btn-pri">Create a tournament ↗</Link>
@@ -55,7 +55,7 @@ export default function HomePage() {
         </section>
 
         <section id="how" className="about-section mx-auto max-w-6xl border-t border-line px-5 py-20">
-          <h2 className="font-score text-4xl font-bold sm:text-5xl">From signup to first pull in four steps</h2>
+          <h2 className="font-score text-4xl font-bold sm:text-5xl">From signup to first serve in four steps</h2>
           <ol className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((s, i) => (
               <li key={s.title} className="about-step">

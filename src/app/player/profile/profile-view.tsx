@@ -16,7 +16,7 @@ export function ProfileView() {
       <div className="grid max-w-xl gap-4">
         <Row label="Full name"><input className="inp" defaultValue="Alex Rivera" /></Row>
         <Row label="City"><input className="inp" defaultValue="Imus, Cavite" /></Row>
-        <Row label="Position"><select className="inp" defaultValue="Handler">{positions.map((p) => <option key={p}>{p}</option>)}</select></Row>
+        <Row label="Preferred format"><select className="inp" defaultValue="Singles">{positions.map((p) => <option key={p}>{p}</option>)}</select></Row>
         <Row label="Experience"><select className="inp" defaultValue="Club level">{levels.map((l) => <option key={l}>{l}</option>)}</select></Row>
         <Row label="Gender match"><select className="inp" defaultValue="Open">{matches.map((m) => <option key={m}>{m}</option>)}</select></Row>
         <Row label="Jersey number"><input className="inp" defaultValue="17" /></Row>

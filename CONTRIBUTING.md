@@ -1,7 +1,7 @@
 # Contributing to Sidelines
 
 Thanks for your interest in contributing! Sidelines is a tournament scoring and
-live results platform for ultimate frisbee. This document explains how to get
+live results platform for pickleball. This document explains how to get
 set up and what we expect from contributions.
 
 ## Getting started

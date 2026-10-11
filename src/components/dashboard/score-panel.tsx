@@ -20,7 +20,7 @@ interface State {
   running: boolean;
 }
 type Action =
-  | { type: "goal"; side: Side }
+  | { type: "point"; side: Side }
   | { type: "timeout"; side: Side }
   | { type: "undo" }
   | { type: "offline" }
@@ -31,7 +31,7 @@ type Action =
 function makeInitial(scores: [number, number]): State {
   return {
     score: { a: scores[0], b: scores[1] }, timeouts: { a: 1, b: 1 }, log: [], stack: [],
-    offline: false, queued: 0, secs: 760, running: false,
+    offline: false, queued: 0, secs: 0, running: false,
   };
 }
 
@@ -41,20 +41,20 @@ function makeReducer(names: [string, string]) {
   return function reducer(s: State, a: Action): State {
     const queued = (n = 1) => (s.offline ? s.queued + n : s.queued);
     switch (a.type) {
-      case "goal": {
+      case "point": {
         const score = { ...s.score, [a.side]: s.score[a.side] + 1 };
-        return { ...s, score, stack: [...s.stack, a.side], queued: queued(), log: [`Goal ${names[a.side === "a" ? 0 : 1]}  ${score.a}–${score.b}`, ...s.log] };
+        return { ...s, score, stack: [...s.stack, a.side], queued: queued(), log: [`Point for ${names[a.side === "a" ? 0 : 1]}  ${score.a}–${score.b}`, ...s.log] };
       }
       case "timeout":
         return { ...s, timeouts: { ...s.timeouts, [a.side]: s.timeouts[a.side] - 1 }, queued: queued(), log: [`Timeout ${names[a.side === "a" ? 0 : 1]}`, ...s.log] };
       case "undo": {
         const side = s.stack[s.stack.length - 1];
         if (!side) return s;
-        return { ...s, score: { ...s.score, [side]: s.score[side] - 1 }, stack: s.stack.slice(0, -1), queued: queued(), log: ["Undid last goal", ...s.log] };
+        return { ...s, score: { ...s.score, [side]: s.score[side] - 1 }, stack: s.stack.slice(0, -1), queued: queued(), log: ["Undid last point", ...s.log] };
       }
       case "offline": return { ...s, offline: !s.offline, queued: s.offline ? 0 : s.queued };
       case "pause": return { ...s, running: !s.running };
-      case "tick": return s.running && s.secs > 0 ? { ...s, secs: s.secs - 1 } : s;
+      case "tick": return s.running ? { ...s, secs: s.secs + 1 } : s;
       case "reset": return makeInitial([0, 0]);
     }
   };
@@ -65,6 +65,7 @@ export interface ScorePanelProps {
   field: string;
   scheduleLabel?: string;
   target?: number;
+  winBy?: number;
   label?: string;
   role?: string;
   /** Person's name — carried in the QR link so scanning identifies them. */
@@ -75,13 +76,12 @@ export interface ScorePanelProps {
   gameId?: string;
 }
 
-export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, role, keeper, publicMode = false, gameId }: ScorePanelProps) {
+export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2, label, role, keeper, publicMode = false, gameId }: ScorePanelProps) {
   const router = useRouter();
   const { show, node } = useToast();
   const [s, dispatch] = useReducer(makeReducer(teams), [0, 0] as [number, number], makeInitial);
   const [bumped, setBumped] = useState<Side | null>(null);
-  const finished = s.score.a >= target || s.score.b >= target;
-  const capProgress = Math.max(0, Math.min(100, (s.secs / 760) * 100));
+  const finished = (s.score.a >= target || s.score.b >= target) && Math.abs(s.score.a - s.score.b) >= winBy;
 
   useEffect(() => {
     if (!s.running) return;
@@ -106,9 +106,9 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
     if (!publicMode) router.push("/organizer/schedule");
   };
 
-  const scoreGoal = (side: Side) => {
+  const scorePoint = (side: Side) => {
     setBumped(null);
-    dispatch({ type: "goal", side });
+    dispatch({ type: "point", side });
     requestAnimationFrame(() => setBumped(side));
   };
 
@@ -128,8 +128,8 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
         )}
         <div className="score-panel-clock bg-field pb-3 text-center text-sm text-white">
           <div className="score-clock-row">
-            <span>Soft cap in <b className="score-clock tabular-nums">{clock(s.secs)}</b></span>
-            <span className="score-rule">First to {target}</span>
+             <span>Match clock <b className="score-clock tabular-nums">{clock(s.secs)}</b></span>
+             <span className="score-rule">First to {target} · win by {winBy}</span>
             <span className="score-clock-actions">
               {publicMode && (
                 <button onClick={toggleOffline} className={`score-connection ${s.offline ? "is-offline" : ""}`}>
@@ -137,12 +137,11 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
                   {s.offline ? `Offline · ${s.queued}` : "Online"}
                 </button>
               )}
-              <button onClick={() => dispatch({ type: "pause" })} className={`score-pause ${!s.running && s.secs === 760 ? "is-start" : ""}`}>
-                {s.running ? "Pause" : s.secs === 760 ? "Start" : "Resume"}
+              <button onClick={() => dispatch({ type: "pause" })} className={`score-pause ${!s.running && s.secs === 0 ? "is-start" : ""}`}>
+                {s.running ? "Pause" : s.secs === 0 ? "Start" : "Resume"}
               </button>
             </span>
           </div>
-          <div className="score-cap-track" aria-hidden="true"><span style={{ width: `${capProgress}%` }} /></div>
         </div>
 
         <div className="score-panel-teams grid grid-cols-2 divide-x divide-line">
@@ -153,7 +152,7 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
                 <span className="score-side-index" aria-hidden="true">{i === 0 ? "A" : "B"}</span>
                 <p className="score-team-name font-medium">{name}</p>
                 <p className="score-value font-score text-8xl font-bold leading-none tabular-nums" aria-live="polite">{s.score[side]}</p>
-                <button className="btn btn-pri score-goal-button mt-3 w-full !py-4 text-lg" disabled={finished} onClick={() => scoreGoal(side)}>
+                <button className="btn btn-pri score-point-button mt-3 w-full !py-4 text-lg" disabled={finished} onClick={() => scorePoint(side)}>
                   +1<span className="sr-only"> point for {name}</span>
                 </button>
                 <button className="btn mt-2 w-full" disabled={!s.timeouts[side]} onClick={() => dispatch({ type: "timeout", side })}>Timeout ({s.timeouts[side]})</button>
@@ -170,7 +169,7 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
           {meta && <p className="mt-3 text-center text-xs uppercase tracking-wider text-muted">{meta}</p>}
           <p className="mb-1 mt-4 text-sm font-bold">Event log</p>
           <ul className="max-h-28 space-y-1 overflow-auto text-sm text-muted">
-            {s.log.length ? s.log.map((l, i) => <li key={i}>{l}</li>) : <li>No events yet. Tap +1 goal.</li>}
+            {s.log.length ? s.log.map((l, i) => <li key={i}>{l}</li>) : <li>No events yet. Tap +1 point.</li>}
           </ul>
         </div>
       </div>

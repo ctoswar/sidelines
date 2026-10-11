@@ -14,7 +14,7 @@ import * as S from "./event-sections";
 
 const TABS = [
   { key: "info", label: "Info" }, { key: "teams", label: "Teams" }, { key: "schedule", label: "Schedule" },
-  { key: "spirit", label: "Spirit" }, { key: "pools", label: "Pools" }, { key: "bracket", label: "Bracket" },
+  { key: "sportsmanship", label: "Sportsmanship" }, { key: "pools", label: "Pools" }, { key: "bracket", label: "Bracket" },
   { key: "stats", label: "Stats" }, { key: "mvp", label: "MVP" }, { key: "standings", label: "Standings" }, { key: "crew", label: "Crew" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -140,7 +140,7 @@ export function EventShell({ d }: { d: EventDetail }) {
         {tab === "info" && <S.InfoTab d={d} mode={mode} />}
         {tab === "teams" && <S.TeamsTab d={d} />}
         {tab === "schedule" && <S.ScheduleTab d={d} mode={mode} />}
-        {tab === "spirit" && <S.SpiritTab d={d} />}
+        {tab === "sportsmanship" && <S.SportsmanshipTab d={d} />}
         {tab === "pools" && <S.PoolsTab d={d} />}
         {tab === "bracket" && <S.BracketTab d={d} mode={mode} />}
         {tab === "stats" && <S.StatsTab d={d} />}
