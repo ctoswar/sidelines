@@ -3,6 +3,7 @@
 import { useEffect, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/dashboard/use-toast";
+import { markGameFinished } from "@/lib/game-results";
 import type { Side } from "@/types";
 
 const clock = (secs: number) =>
@@ -70,9 +71,11 @@ export interface ScorePanelProps {
   keeper?: string;
   /** Public (QR-scanned) mode: no dashboard redirect on finish. */
   publicMode?: boolean;
+  /** Schedule id used to persist the final result for the organizer schedule. */
+  gameId?: string;
 }
 
-export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, role, keeper, publicMode = false }: ScorePanelProps) {
+export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, role, keeper, publicMode = false, gameId }: ScorePanelProps) {
   const router = useRouter();
   const { show, node } = useToast();
   const [s, dispatch] = useReducer(makeReducer(teams), [0, 0] as [number, number], makeInitial);
@@ -85,6 +88,12 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 15, label, ro
     const id = setInterval(() => dispatch({ type: "tick" }), 1000);
     return () => clearInterval(id);
   }, [s.running]);
+
+  useEffect(() => {
+    if (finished && gameId) {
+      markGameFinished(gameId, `${s.score.a}–${s.score.b}`);
+    }
+  }, [finished, gameId, s.score.a, s.score.b]);
 
   const toggleOffline = () => {
     if (s.offline && s.queued) show(`${s.queued} events synced`);

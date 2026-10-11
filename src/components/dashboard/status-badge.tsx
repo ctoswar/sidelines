@@ -7,6 +7,6 @@ export function StatusBadge({ status }: { status: GameStatus }) {
         <span className="pulse mr-1 inline-block h-2 w-2 rounded-full bg-flag" />Live
       </span>
     );
-  if (status === "final") return <span className="text-muted">Final</span>;
+  if (status === "final") return <span className="text-muted">Done</span>;
   return <span className="font-medium text-brand">Up next</span>;
 }

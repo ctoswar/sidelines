@@ -9,6 +9,7 @@ import { games } from "@/lib/mock-data";
 import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
+import { applySavedGameResults, subscribeToGameResults } from "@/lib/game-results";
 
 const pill = (active: boolean) =>
   `rounded-full border px-3.5 py-1.5 text-sm font-bold transition-colors ${
@@ -24,7 +25,11 @@ export default function SchedulePage() {
   const [schedule, setSchedule] = useState(games);
 
   useEffect(() => {
-    setSchedule(applyScheduleStartTime(games, readScheduleStartTime()));
+    const refreshSchedule = () => {
+      setSchedule(applySavedGameResults(applyScheduleStartTime(games, readScheduleStartTime())));
+    };
+    refreshSchedule();
+    return subscribeToGameResults(refreshSchedule);
   }, []);
 
   const tiers = divisions.find((d) => d.id === division)?.tiers ?? [];

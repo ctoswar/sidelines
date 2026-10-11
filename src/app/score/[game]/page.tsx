@@ -66,6 +66,7 @@ export default async function PublicScorePage({
           </p>
         </div>
         <ScorePanel
+          gameId={g.id}
           teams={[g.teamA, g.teamB]}
           field={g.field}
           scheduleLabel={scheduleLabel}
