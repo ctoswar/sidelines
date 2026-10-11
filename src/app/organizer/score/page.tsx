@@ -15,7 +15,13 @@ export default async function ScorePage({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHeader title="Score a game" subtitle={`${g.teamA} vs ${g.teamB} · ${g.time} · ${divisionLabel(g.division)} ${g.tier}`} />
-      <ScorePanel teams={[g.teamA, g.teamB]} field={g.field} label={`${divisionLabel(g.division)} · ${g.tier}`} />
+       <ScorePanel
+         gameId={g.id}
+         teams={[g.teamA, g.teamB]}
+         field={g.field}
+         scheduleLabel={`${g.time} · ${g.field}`}
+         label={`${divisionLabel(g.division)} · ${g.tier}`}
+       />
     </>
   );
 }
