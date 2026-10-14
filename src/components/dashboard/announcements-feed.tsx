@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getEvent } from "@/lib/events-data";
-import { getAnnouncements, type Announcement } from "@/lib/demo-store";
+import { fetchAnnouncements, type Announcement } from "@/lib/announcements";
 
 const when = (iso: string) => {
   const d = new Date(iso);
@@ -14,7 +14,11 @@ export function AnnouncementsFeed() {
   const [items, setItems] = useState<Announcement[]>([]);
 
   useEffect(() => {
-    setItems(getAnnouncements().slice(0, 3));
+    let alive = true;
+    fetchAnnouncements({ limit: 3 })
+      .then((rows) => { if (alive) setItems(rows); })
+      .catch(() => { /* feed is non-critical — keep the fallback */ });
+    return () => { alive = false; };
   }, []);
 
   if (items.length === 0) {

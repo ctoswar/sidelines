@@ -240,6 +240,11 @@ async function seedTournaments() {
       },
     });
 
+  // Results are demo state, not seed content: scoring writes them at runtime
+  // (QR tokens, organizer score page), so re-seeding drops them to restore the
+  // mock schedule above.
+  await db.delete(t.gameResults);
+
   // Crew rows start with the seeded keeper names; tokens arrive in Phase 4.
   const crewByGame = new Map<string, { scorekeeper: string; umpire: string }>();
   for (const keeper of keepers) {

@@ -1,7 +1,11 @@
-import { keepers } from "@/lib/mock-data";
+// Game crew client.
+//
+// Crew names live in Postgres behind /api/score/games; this module maps that
+// route onto the Record<gameId, crew> shape the schedule and scorekeeper
+// screens already speak. Saving notifies in-tab subscribers so the schedule
+// picks up a rename without a reload (cross-tab sync arrives with SSE).
 
-const CREW_KEY = "sidelines.demo.game-crew";
-const CREW_EVENT = "sidelines:game-crew-updated";
+import { parse } from "./api-client";
 
 export type GameCrew = {
   scorekeeper: string;
@@ -10,44 +14,43 @@ export type GameCrew = {
 
 export type GameCrewMap = Record<string, GameCrew>;
 
-export const getDefaultGameCrew = (): GameCrewMap => keepers.reduce<GameCrewMap>((result, keeper) => {
-  if (!keeper.gameId) return result;
-  const current = result[keeper.gameId] ?? { scorekeeper: "", umpire: "" };
-  result[keeper.gameId] = keeper.role === "Scorer"
-    ? { ...current, scorekeeper: keeper.name }
-    : { ...current, umpire: keeper.name };
-  return result;
-}, {});
-
-export function getGameCrew(): GameCrewMap {
-  const fallback = getDefaultGameCrew();
-  if (typeof window === "undefined") return fallback;
-
-  try {
-    const raw = window.localStorage.getItem(CREW_KEY);
-    if (!raw) return fallback;
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return fallback;
-    return { ...fallback, ...(parsed as GameCrewMap) };
-  } catch {
-    return fallback;
-  }
+/** Loads every game's assigned scorekeeper + umpire. Organizer only. */
+export async function fetchGameCrew(): Promise<GameCrewMap> {
+  const body = await parse<{ crew: GameCrewMap }>(await fetch("/api/score/games"));
+  return body.crew;
 }
 
-export function saveGameCrew(gameId: string, crew: GameCrew): void {
-  if (typeof window === "undefined") return;
-  const next = { ...getGameCrew(), [gameId]: crew };
-  window.localStorage.setItem(CREW_KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event(CREW_EVENT));
+/** Saves one game's names (no token mint). Notifies in-tab subscribers. */
+export async function saveGameCrew(gameId: string, crew: GameCrew): Promise<void> {
+  await parse<{ crew: GameCrew }>(
+    await fetch(`/api/score/games/${encodeURIComponent(gameId)}/crew`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(crew),
+    }),
+  );
+  crewListeners.forEach((listener) => listener());
 }
 
-export function subscribeToGameCrew(listener: () => void): () => void {
-  if (typeof window === "undefined") return () => undefined;
-  const refresh = () => listener();
-  window.addEventListener(CREW_EVENT, refresh);
-  window.addEventListener("storage", refresh);
-  return () => {
-    window.removeEventListener(CREW_EVENT, refresh);
-    window.removeEventListener("storage", refresh);
-  };
+/** Mints (rotates) a game's capability tokens; returns them raw, once. */
+export async function mintGameTokens(
+  gameId: string,
+  crew: GameCrew,
+): Promise<{ scoreToken: string; umpireToken: string }> {
+  return parse<{ scoreToken: string; umpireToken: string }>(
+    await fetch(`/api/score/games/${encodeURIComponent(gameId)}/tokens`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(crew),
+    }),
+  );
+}
+
+type CrewListener = () => void;
+const crewListeners = new Set<CrewListener>();
+
+/** Fires after this tab saves crew, so open views refresh. */
+export function subscribeToGameCrew(listener: CrewListener): () => void {
+  crewListeners.add(listener);
+  return () => { crewListeners.delete(listener); };
 }

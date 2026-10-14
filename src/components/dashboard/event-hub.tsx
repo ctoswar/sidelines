@@ -2,16 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useSession } from "@/lib/auth";
-import {
-  addAnnouncement,
-  getAnnouncements,
-  getRegistrations,
-  removeAnnouncement,
-  removeRegistration,
-  type Announcement,
-  type Registration,
-} from "@/lib/demo-store";
+import { useToast } from "@/components/dashboard/use-toast";
+import { fetchRegistrationState, removeRegistration, type Registration } from "@/lib/registrations";
+import { createAnnouncement, deleteAnnouncement, fetchAnnouncements, type Announcement } from "@/lib/announcements";
 import type { EventDetail } from "@/lib/event-detail";
 
 const day = (iso: string) => {
@@ -34,25 +27,52 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [copied, setCopied] = useState(false);
-  const session = useSession();
-
-  useEffect(() => {
-    setRegs(getRegistrations(slug));
-    setAnns(getAnnouncements(slug));
-  }, [slug]);
+  const { show, node } = useToast();
 
   const refresh = useCallback(() => {
-    setRegs(getRegistrations(slug));
-    setAnns(getAnnouncements(slug));
+    let alive = true;
+    // The inbox list is organizer-only on the server; everyone else gets null.
+    fetchRegistrationState(slug)
+      .then((state) => { if (alive) setRegs(state.registrations ?? []); })
+      .catch(() => { /* keep whatever is on screen */ });
+    fetchAnnouncements({ slug })
+      .then((rows) => { if (alive) setAnns(rows); })
+      .catch(() => { /* keep whatever is on screen */ });
+    return () => { alive = false; };
   }, [slug]);
 
-  const publish = (e: React.FormEvent) => {
+  useEffect(() => refresh(), [refresh]);
+
+  const publish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
-    addAnnouncement({ slug, title, body, author: session?.name ?? "Tournament desk" });
-    setTitle("");
-    setBody("");
-    refresh();
+    try {
+      // The author is the publishing session — the server decides, not the form.
+      const created = await createAnnouncement({ slug, title, body });
+      setAnns((current) => [created, ...current]);
+      setTitle("");
+      setBody("");
+    } catch (error) {
+      show(error instanceof Error ? error.message : "Could not publish the announcement");
+    }
+  };
+
+  const removeReg = async (id: string) => {
+    try {
+      await removeRegistration(slug, id);
+      setRegs((current) => current.filter((r) => r.id !== id));
+    } catch (error) {
+      show(error instanceof Error ? error.message : "Could not remove the registration");
+    }
+  };
+
+  const removeAnn = async (id: string) => {
+    try {
+      await deleteAnnouncement(id);
+      setAnns((current) => current.filter((a) => a.id !== id));
+    } catch (error) {
+      show(error instanceof Error ? error.message : "Could not delete the announcement");
+    }
   };
 
   const copyLink = async () => {
@@ -109,18 +129,15 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
               </thead>
               <tbody className="divide-y divide-line">
                 {regs.map((r) => (
-                  <tr key={`${r.slug}-${r.email}`}>
+                  <tr key={r.id}>
                     <td className="p-3 font-bold">{r.name}</td>
                     <td className="p-3 text-muted">{r.email || "—"}</td>
-                    <td className="p-3 capitalize">{r.email.startsWith("org") ? "Organizer" : "Player"}</td>
+                    <td className="p-3 capitalize">{r.role === "organizer" ? "Organizer" : r.role === "player" ? "Player" : "Guest"}</td>
                     <td className="p-3 text-muted">{day(r.at)}</td>
                     <td className="p-3 text-right">
                       <button
                         className="text-sm text-flag hover:underline"
-                        onClick={() => {
-                          removeRegistration(slug, r.email);
-                          refresh();
-                        }}
+                        onClick={() => removeReg(r.id)}
                       >
                         Remove
                       </button>
@@ -169,10 +186,7 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
                   </div>
                   <button
                     className="text-sm text-flag hover:underline"
-                    onClick={() => {
-                      removeAnnouncement(a.id);
-                      refresh();
-                    }}
+                    onClick={() => removeAnn(a.id)}
                   >
                     Delete
                   </button>
@@ -182,6 +196,7 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
           </ul>
         )}
       </section>
+      {node}
     </>
   );
 }

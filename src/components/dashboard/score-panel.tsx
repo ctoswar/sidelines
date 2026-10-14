@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/dashboard/use-toast";
-import { markGameFinished } from "@/lib/game-results";
+import { submitGameResult } from "@/lib/game-results";
 import type { Side } from "@/types";
 
 const clock = (secs: number) =>
@@ -68,19 +68,26 @@ export interface ScorePanelProps {
   winBy?: number;
   label?: string;
   role?: string;
-  /** Person's name — carried in the QR link so scanning identifies them. */
+  /** Person's name — resolved from the QR token server-side, for the footer. */
   keeper?: string;
   /** Public (QR-scanned) mode: no dashboard redirect on finish. */
   publicMode?: boolean;
   /** Schedule id used to persist the final result for the organizer schedule. */
   gameId?: string;
+  /**
+   * Capability token from a scanned QR link. Sent as a Bearer credential so
+   * the result endpoint can verify this person may score THIS game; without
+   * it the session (organizer pages) authenticates instead.
+   */
+  token?: string;
 }
 
-export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2, label, role, keeper, publicMode = false, gameId }: ScorePanelProps) {
+export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2, label, role, keeper, publicMode = false, gameId, token }: ScorePanelProps) {
   const router = useRouter();
   const { show, node } = useToast();
   const [s, dispatch] = useReducer(makeReducer(teams), [0, 0] as [number, number], makeInitial);
   const [bumped, setBumped] = useState<Side | null>(null);
+  const submitting = useRef(false);
   const finished = (s.score.a >= target || s.score.b >= target) && Math.abs(s.score.a - s.score.b) >= winBy;
 
   useEffect(() => {
@@ -90,10 +97,17 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
   }, [s.running]);
 
   useEffect(() => {
-    if (finished && gameId) {
-      markGameFinished(gameId, `${s.score.a}–${s.score.b}`);
-    }
-  }, [finished, gameId, s.score.a, s.score.b]);
+    if (!finished || !gameId) return;
+    // Fire once per finished score; the reducer can't change the score after
+    // finish without an undo, and the endpoint upserts anyway.
+    if (submitting.current) return;
+    submitting.current = true;
+    submitGameResult(gameId, `${s.score.a}–${s.score.b}`, token)
+      .catch((error: unknown) => {
+        show(error instanceof Error ? error.message : "Could not save the final score");
+      })
+      .finally(() => { submitting.current = false; });
+  }, [finished, gameId, s.score.a, s.score.b, token, show]);
 
   const toggleOffline = () => {
     if (s.offline && s.queued) show(`${s.queued} events synced`);

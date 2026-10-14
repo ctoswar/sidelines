@@ -9,8 +9,8 @@ import { games } from "@/lib/mock-data";
 import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
-import { applySavedGameResults, subscribeToGameResults } from "@/lib/game-results";
-import { getGameCrew, subscribeToGameCrew, type GameCrew, type GameCrewMap } from "@/lib/game-crew";
+import { applyGameResults, fetchGameResults, subscribeToGameResults, type GameResults } from "@/lib/game-results";
+import { fetchGameCrew, subscribeToGameCrew, type GameCrewMap } from "@/lib/game-crew";
 
 const pill = (active: boolean) =>
   `rounded-full border px-3.5 py-1.5 text-sm font-bold transition-colors ${
@@ -23,23 +23,33 @@ export default function SchedulePage() {
   const { show, node } = useToast();
   const [division, setDivision] = useState<DivisionId | null>(null);
   const [tier, setTier] = useState<string | null>(null);
-  const [schedule, setSchedule] = useState(games);
+  const [results, setResults] = useState<GameResults>({});
   const [crew, setCrew] = useState<GameCrewMap>({});
   const [selectedGame, setSelectedGame] = useState<(typeof games)[number] | null>(null);
 
+  // Results + crew come from the server; failures keep the last good overlay.
   useEffect(() => {
-    const refreshSchedule = () => {
-      setSchedule(applySavedGameResults(applyScheduleStartTime(games, readScheduleStartTime())));
-    };
-    refreshSchedule();
-    return subscribeToGameResults(refreshSchedule);
+    let alive = true;
+    const refreshResults = () =>
+      fetchGameResults()
+        .then((next) => { if (alive) setResults(next); })
+        .catch(() => { /* schedule still renders with the seeded scores */ });
+    refreshResults();
+    return subscribeToGameResults(refreshResults);
   }, []);
 
   useEffect(() => {
-    const refreshCrew = () => setCrew(getGameCrew());
+    let alive = true;
+    const refreshCrew = () =>
+      fetchGameCrew()
+        .then((next) => { if (alive) setCrew(next); })
+        .catch(() => { /* crew modal shows "Not assigned" */ });
     refreshCrew();
     return subscribeToGameCrew(refreshCrew);
   }, []);
+
+  const base = applyScheduleStartTime(games, readScheduleStartTime());
+  const schedule = applyGameResults(base, results);
 
   const tiers = divisions.find((d) => d.id === division)?.tiers ?? [];
   const filtered = schedule.filter(

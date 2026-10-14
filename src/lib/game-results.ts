@@ -1,53 +1,61 @@
-import type { Game } from "@/types";
+// Final-score client.
+//
+// Results live in Postgres behind /api/score; the public score page submits
+// with its capability token (Bearer), the organizer score page with the
+// session cookie. `applyGameResults` is a pure overlay: callers fetch the
+// map and lay it over the seeded schedule, so the schedule page keeps its
+// single source of truth for game rows.
 
-const RESULTS_KEY = "sidelines.demo.game-results";
-const RESULTS_EVENT = "sidelines:game-results-updated";
+import { parse } from "./api-client";
 
-type SavedResult = {
+export type GameResult = {
   score: string;
   completedAt: string;
 };
 
-type SavedResults = Record<string, SavedResult>;
+export type GameResults = Record<string, GameResult>;
 
-function readResults(): SavedResults {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(RESULTS_KEY);
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return parsed as SavedResults;
-  } catch {
-    return {};
-  }
+/** Every saved result, keyed by game id. Public — scores are scoreboard data. */
+export async function fetchGameResults(): Promise<GameResults> {
+  const body = await parse<{ results: GameResults }>(await fetch("/api/score/results"));
+  return body.results;
 }
 
-/** Applies browser-saved final scores over the seeded schedule. */
-export function applySavedGameResults(schedule: readonly Game[]): Game[] {
-  const results = readResults();
+/**
+ * Submits the final score for a game. Pass `token` (from a scanned QR link)
+ * to authenticate as that game's crew; without one the session must be an
+ * organizer. Throws the server's message on rejection.
+ */
+export async function submitGameResult(gameId: string, score: string, token?: string): Promise<GameResult> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const body = await parse<{ result: GameResult }>(
+    await fetch(`/api/score/games/${encodeURIComponent(gameId)}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ score }),
+    }),
+  );
+  resultListeners.forEach((listener) => listener());
+  return body.result;
+}
+
+/** Applies saved final scores over the seeded schedule. */
+export function applyGameResults<T extends { id: string; score: string; status: string }>(
+  schedule: readonly T[],
+  results: GameResults,
+): T[] {
   return schedule.map((game) => {
     const result = results[game.id];
-    return result ? { ...game, score: result.score, status: "final" } : game;
+    return result ? { ...game, score: result.score, status: "final" as const } : game;
   });
 }
 
-/** Marks a game finished and notifies other open dashboard views. */
-export function markGameFinished(gameId: string, score: string): void {
-  if (typeof window === "undefined") return;
-  const results = readResults();
-  results[gameId] = { score, completedAt: new Date().toISOString() };
-  window.localStorage.setItem(RESULTS_KEY, JSON.stringify(results));
-  window.dispatchEvent(new Event(RESULTS_EVENT));
-}
+type ResultListener = () => void;
+const resultListeners = new Set<ResultListener>();
 
-export function subscribeToGameResults(listener: () => void): () => void {
-  if (typeof window === "undefined") return () => undefined;
-  const refresh = () => listener();
-  window.addEventListener(RESULTS_EVENT, refresh);
-  window.addEventListener("storage", refresh);
-  return () => {
-    window.removeEventListener(RESULTS_EVENT, refresh);
-    window.removeEventListener("storage", refresh);
-  };
+/** Fires after this tab submits a result, so open views refresh. */
+export function subscribeToGameResults(listener: ResultListener): () => void {
+  resultListeners.add(listener);
+  return () => { resultListeners.delete(listener); };
 }

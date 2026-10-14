@@ -9,7 +9,7 @@ import { formatRange } from "@/lib/events-data";
 import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
 import { AUTH_CHANGED_EVENT, refreshSession } from "@/lib/auth";
-import { isRegistered, registerForEvent, unregisterFromEvent } from "@/lib/demo-store";
+import { fetchRegistrationState, registerForEvent, unregisterFromEvent } from "@/lib/registrations";
 import * as S from "./event-sections";
 
 const TABS = [
@@ -38,15 +38,25 @@ export function EventShell({ d }: { d: EventDetail }) {
 
   // The public header can sign you out without this page being replaced, so
   // re-read the session when it changes — and on focus, which covers signing
-  // out in another tab. Logging out drops the badge rather than keeping it: the
-  // stored registration is still there, it just belongs to someone who is no
-  // longer signed in. getSession() reads a cache this effect fills first.
+  // out in another tab. The badge itself is server state now: after every
+  // session change we re-fetch the registration, and a signed-out visitor
+  // simply gets registered:false.
   useEffect(() => {
-    const sync = () => void refreshSession().then(() => setRegistered(isRegistered(e.slug)));
-    sync();
+    let alive = true;
+    const sync = async () => {
+      await refreshSession();
+      try {
+        const state = await fetchRegistrationState(e.slug);
+        if (alive) setRegistered(state.registered);
+      } catch {
+        /* signed out or offline — leave the badge off */
+      }
+    };
+    void sync();
     window.addEventListener(AUTH_CHANGED_EVENT, sync);
     window.addEventListener("focus", sync);
     return () => {
+      alive = false;
       window.removeEventListener(AUTH_CHANGED_EVENT, sync);
       window.removeEventListener("focus", sync);
     };
@@ -80,16 +90,22 @@ export function EventShell({ d }: { d: EventDetail }) {
   const register = async () => {
     // Re-read the session rather than trusting state: you can sign out of the
     // public header while standing here, and a click must never flip the badge
-    // without actually storing the registration.
+    // without actually storing the registration. The server answers with the
+    // fresh count + flag, which is what the badge shows.
     const session = await refreshSession();
     if (!session) {
       setRegistered(false);
       router.push(`/login?next=${encodeURIComponent(`/events/${e.slug}`)}`);
       return;
     }
-    if (registered) unregisterFromEvent(e.slug);
-    else registerForEvent(e.slug);
-    setRegistered(!registered);
+    try {
+      const state = registered
+        ? await unregisterFromEvent(e.slug)
+        : await registerForEvent(e.slug);
+      setRegistered(state.registered);
+    } catch {
+      /* keep the server's answer as-is; a retry on focus re-syncs */
+    }
   };
 
   return (
