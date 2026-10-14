@@ -38,11 +38,21 @@ function storeCookies(jar: CookieJar, response: Response) {
 }
 
 async function signIn(email: string, password: string, jar: CookieJar) {
-  const response = await fetch(`${BASE}/api/auth/sign-in/email`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...ORIGIN_HEADERS },
-    body: JSON.stringify({ email, password }),
-  });
+  // Better Auth's production default rate-limits sign-in to 3 attempts per
+  // 10 seconds per IP, and this harness signs in several times in a burst —
+  // especially when run right after another harness. Back off on 429 rather
+  // than disabling the limiter in the app.
+  let response!: Response;
+  for (let attempt = 1; ; attempt++) {
+    response = await fetch(`${BASE}/api/auth/sign-in/email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...ORIGIN_HEADERS },
+      body: JSON.stringify({ email, password }),
+    });
+    if (response.status !== 429 || attempt >= 4) break;
+    const retryAfter = Number(response.headers.get("retry-after"));
+    await new Promise((resolve) => setTimeout(resolve, (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 10) * 1000));
+  }
   storeCookies(jar, response);
   return { response, body: await response.json().catch(() => null) as Record<string, unknown> | null };
 }

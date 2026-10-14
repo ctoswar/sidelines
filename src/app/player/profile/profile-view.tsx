@@ -3,69 +3,107 @@
 import { useEffect, useState, type ChangeEvent, type CSSProperties } from "react";
 import { useToast } from "@/components/dashboard/use-toast";
 import { genders, hands, levels, matches, positions, profileColors } from "@/lib/validators/auth";
-import { DEFAULT_PLAYER_PROFILE, getPlayerProfile, savePlayerProfile, type PlayerProfile } from "@/lib/player-profile";
+import {
+  BLANK_PLAYER_PROFILE,
+  deleteProfilePicture,
+  fetchPlayerProfile,
+  savePlayerProfile,
+  uploadProfilePicture,
+  type PlayerProfile,
+} from "@/lib/player-profile";
 import { useSession } from "@/lib/auth";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "PR";
 }
 
-function usernameFromName(name: string) {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "").slice(0, 20) || "pickleball.player";
-}
-
 function ProfileField({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }) {
   return <label className={wide ? "profile-field profile-field-wide" : "profile-field"}><span>{label}</span>{children}</label>;
 }
 
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
 export function ProfileView() {
   const { show, node } = useToast();
-  const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
-  const [draft, setDraft] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
+  const [profile, setProfile] = useState<PlayerProfile>(BLANK_PLAYER_PROFILE);
+  const [draft, setDraft] = useState<PlayerProfile>(BLANK_PLAYER_PROFILE);
+  const [busy, setBusy] = useState(false);
   const session = useSession();
 
-  // The session arrives after mount, so the identity overlay (name, email,
-  // username) is applied when it turns up rather than only on first paint.
+  // The profile lives in Postgres now, so it arrives after mount. Until then
+  // the page shows blanks rather than the seed's demo identity.
   useEffect(() => {
     if (!session) return;
-    const saved = getPlayerProfile();
-    const current = session.role === "player"
-      ? {
-          ...saved,
-          name: session.name,
-          email: session.email,
-          username: session.username || usernameFromName(session.name),
-        }
-      : saved;
-    setProfile(current);
-    setDraft(current);
-  }, [session]);
+    let alive = true;
+    fetchPlayerProfile()
+      .then((loaded) => {
+        if (!alive) return;
+        setProfile(loaded);
+        setDraft(loaded);
+      })
+      .catch((error: Error) => alive && show(error.message));
+    return () => { alive = false; };
+  }, [session, show]);
 
   const patch = (changes: Partial<PlayerProfile>) => setDraft((current) => ({ ...current, ...changes }));
   const accentStyle = { "--profile-accent": draft.profileColor } as CSSProperties;
 
-  const save = () => {
-    savePlayerProfile(draft);
-    setProfile(draft);
-    show("Profile saved");
+  const save = async () => {
+    setBusy(true);
+    try {
+      const saved = await savePlayerProfile(draft);
+      setProfile(saved);
+      setDraft(saved);
+      show("Profile saved");
+    } catch (error) {
+      show((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const uploadPicture = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const uploadPicture = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    // Reset so choosing the same file twice still fires a change event.
+    input.value = "";
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
       show("Use a JPG, PNG, or WebP image.");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_PHOTO_BYTES) {
       show("Keep your profile picture under 2 MB.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") patch({ profilePicture: reader.result });
-    };
-    reader.readAsDataURL(file);
+    setBusy(true);
+    try {
+      // The file goes straight to the server as multipart — the old version
+      // read it into a base64 data URL and stored that in localStorage.
+      const updated = await uploadProfilePicture(file);
+      setProfile(updated);
+      setDraft(updated);
+      show("Photo updated");
+    } catch (error) {
+      show((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removePicture = async () => {
+    setBusy(true);
+    try {
+      const updated = await deleteProfilePicture();
+      setProfile(updated);
+      setDraft(updated);
+      show("Photo removed");
+    } catch (error) {
+      show((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -73,11 +111,18 @@ export function ProfileView() {
       <div className="profile-page max-w-4xl">
         <section className="profile-hero" style={accentStyle}>
           <div className="profile-hero-orbit" aria-hidden="true" />
-          <label className="profile-avatar-upload">
-            {draft.profilePicture ? <img src={draft.profilePicture} alt="Profile preview" className="profile-avatar" /> : <span className="profile-avatar">{initials(draft.name)}</span>}
-            <span className="profile-avatar-camera" aria-hidden="true">+</span>
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPicture} />
-          </label>
+          <div className="profile-avatar-wrap">
+            <label className="profile-avatar-upload">
+              {draft.profilePicture ? <img src={draft.profilePicture} alt="Profile preview" className="profile-avatar" /> : <span className="profile-avatar">{initials(draft.name)}</span>}
+              <span className="profile-avatar-camera" aria-hidden="true">+</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPicture} disabled={busy} />
+            </label>
+            {draft.profilePicture && (
+              <button type="button" className="profile-photo-remove" onClick={removePicture} disabled={busy}>
+                Remove photo
+              </button>
+            )}
+          </div>
           <div className="profile-hero-copy">
             <p className="profile-kicker">Pickleball player</p>
             <h2>{draft.name || "Your name"}</h2>
@@ -132,7 +177,7 @@ export function ProfileView() {
 
         <div className="profile-footer">
           <p><b>{profile.format}</b> player · {profile.experience} · ready for the next rally.</p>
-          <button className="btn btn-pri" onClick={save}>Save profile <span aria-hidden="true">↗</span></button>
+          <button className="btn btn-pri" onClick={save} disabled={busy}>Save profile <span aria-hidden="true">↗</span></button>
         </div>
       </div>
       {node}
