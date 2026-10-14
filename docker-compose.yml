@@ -1,0 +1,29 @@
+# Postgres for Sidelines.
+#
+# Local dev:   docker compose up -d db
+# Pi:          same command — named volume persists across restarts/updates.
+# Backups:     docker compose exec db pg_dump -U sidelines sidelines > dump.sql
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sidelines
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sidelines}
+      POSTGRES_DB: sidelines
+    ports:
+      # Bind to loopback only by default. On the Pi, change to "5432:5432"
+      # only if other machines need direct access — otherwise keep it local
+      # and reach it through the app container's network.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sidelines -d sidelines"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
