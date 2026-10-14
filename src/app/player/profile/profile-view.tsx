@@ -4,7 +4,7 @@ import { useEffect, useState, type ChangeEvent, type CSSProperties } from "react
 import { useToast } from "@/components/dashboard/use-toast";
 import { genders, hands, levels, matches, positions, profileColors } from "@/lib/validators/auth";
 import { DEFAULT_PLAYER_PROFILE, getPlayerProfile, savePlayerProfile, type PlayerProfile } from "@/lib/player-profile";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/auth";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "PR";
@@ -22,11 +22,14 @@ export function ProfileView() {
   const { show, node } = useToast();
   const [profile, setProfile] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
   const [draft, setDraft] = useState<PlayerProfile>(DEFAULT_PLAYER_PROFILE);
+  const session = useSession();
 
+  // The session arrives after mount, so the identity overlay (name, email,
+  // username) is applied when it turns up rather than only on first paint.
   useEffect(() => {
+    if (!session) return;
     const saved = getPlayerProfile();
-    const session = getSession();
-    const current = session?.role === "player"
+    const current = session.role === "player"
       ? {
           ...saved,
           name: session.name,
@@ -36,7 +39,7 @@ export function ProfileView() {
       : saved;
     setProfile(current);
     setDraft(current);
-  }, []);
+  }, [session]);
 
   const patch = (changes: Partial<PlayerProfile>) => setDraft((current) => ({ ...current, ...changes }));
   const accentStyle = { "--profile-accent": draft.profileColor } as CSSProperties;

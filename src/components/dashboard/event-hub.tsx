@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { getSession } from "@/lib/auth";
+import { useSession } from "@/lib/auth";
 import {
   addAnnouncement,
   getAnnouncements,
@@ -34,7 +34,7 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [copied, setCopied] = useState(false);
-  const session = getSession();
+  const session = useSession();
 
   useEffect(() => {
     setRegs(getRegistrations(slug));

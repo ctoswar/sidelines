@@ -1,28 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getSession, signOut, type DemoSession } from "@/lib/auth";
+import { signOut, useSession } from "@/lib/auth";
 
 export interface NavItem { href: string; label: string; also?: string[] }
 
 export function Sidebar({ items, roleLabel, footer }: { items: NavItem[]; roleLabel: string; footer: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
-  const [session, setSession] = useState<DemoSession | null>(null);
+  const session = useSession();
   const root = items[0].href;
   const isActive = (i: NavItem) =>
     i.href === root
       ? path === root || (i.also ?? []).some((p) => path.startsWith(p))
       : path.startsWith(i.href);
 
-  // The session lives in localStorage, so it can only be read after mount —
-  // reading it during render would not match the server-rendered HTML.
-  useEffect(() => { setSession(getSession()); }, []);
-
-  const logOut = () => {
-    signOut();
+  // signOut() clears the session cookie server-side; the hook above flips the
+  // "Signed in as" block back as soon as the change is broadcast.
+  const logOut = async () => {
+    await signOut();
     router.push("/login");
   };
 

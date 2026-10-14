@@ -8,7 +8,7 @@ import type { TimeMode } from "@/lib/event-time";
 import { formatRange } from "@/lib/events-data";
 import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
-import { AUTH_CHANGED_EVENT, getSession } from "@/lib/auth";
+import { AUTH_CHANGED_EVENT, refreshSession } from "@/lib/auth";
 import { isRegistered, registerForEvent, unregisterFromEvent } from "@/lib/demo-store";
 import * as S from "./event-sections";
 
@@ -40,9 +40,9 @@ export function EventShell({ d }: { d: EventDetail }) {
   // re-read the session when it changes — and on focus, which covers signing
   // out in another tab. Logging out drops the badge rather than keeping it: the
   // stored registration is still there, it just belongs to someone who is no
-  // longer signed in.
+  // longer signed in. getSession() reads a cache this effect fills first.
   useEffect(() => {
-    const sync = () => setRegistered(Boolean(getSession()) && isRegistered(e.slug));
+    const sync = () => void refreshSession().then(() => setRegistered(isRegistered(e.slug)));
     sync();
     window.addEventListener(AUTH_CHANGED_EVENT, sync);
     window.addEventListener("focus", sync);
@@ -77,11 +77,12 @@ export function EventShell({ d }: { d: EventDetail }) {
   };
   const scroll = (dx: number) => strip.current?.scrollBy({ left: dx, behavior: "smooth" });
   const share = async () => { await navigator.clipboard?.writeText(window.location.href.split("#")[0]); setCopied(true); setTimeout(() => setCopied(false), 1800); };
-  const register = () => {
+  const register = async () => {
     // Re-read the session rather than trusting state: you can sign out of the
     // public header while standing here, and a click must never flip the badge
     // without actually storing the registration.
-    if (!getSession()) {
+    const session = await refreshSession();
+    if (!session) {
       setRegistered(false);
       router.push(`/login?next=${encodeURIComponent(`/events/${e.slug}`)}`);
       return;
