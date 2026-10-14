@@ -1,42 +1,68 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ScorePanel } from "@/components/dashboard/score-panel";
-import { games, keepers } from "@/lib/mock-data";
+import { games } from "@/lib/mock-data";
 import { divisionLabel } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime } from "@/lib/schedule-config";
+import { resolveScoreGrant } from "@/server/score";
 
-// Public, no-account scoring route — opened by scanning a scorekeeper QR code.
-// The QR link carries the person's name and role, so scanning identifies them.
+// Public, no-account scoring route — opened by scanning a scorekeeper QR
+// code. The link carries only a capability token minted by the organizer;
+// the person's name and role are resolved server-side from `game_crew`, so
+// editing the URL buys nothing: an unknown, rotated, or wrong-game token
+// gets the "link is not valid" screen and no scoring panel.
 export default async function PublicScorePage({
   params,
   searchParams,
 }: {
   params: Promise<{ game: string }>;
-  searchParams: Promise<{ role?: string; name?: string; scheduleStart?: string }>;
+  searchParams: Promise<{ t?: string; scheduleStart?: string }>;
 }) {
   const { game } = await params;
-  const { role, name, scheduleStart } = await searchParams;
+  const { t, scheduleStart } = await searchParams;
   const schedule = applyScheduleStartTime(games, scheduleStart ?? "09:00");
   const g = schedule.find((x) => x.id === game);
   if (!g) notFound();
 
-  const roleLabel = role === "umpire" ? "Umpire" : role === "scorer" ? "Scorekeeper" : undefined;
-  const keeperName = name?.slice(0, 40);
+  const grant = await resolveScoreGrant(g.id, t ?? "");
   const scheduleLabel = `${g.time} · ${fieldGameLabel(g, getFieldGameNumbers(games))}`;
 
+  if (!grant) {
+    return (
+      <div className="score-public-page min-h-screen bg-bg px-4 py-6">
+        <header className="score-public-header mx-auto mb-5 flex max-w-sm items-center justify-between">
+          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-flag">Sidelines</p>
+        </header>
+        <main>
+          <div
+            data-score-access="invalid"
+            className="score-public-intro mx-auto mt-16 max-w-sm rounded-2xl border border-line bg-card p-8 text-center"
+          >
+            <h1 className="font-score text-2xl font-bold tracking-tight">This scoring link is not valid</h1>
+            <p className="mt-3 text-sm text-muted">
+              Ask the organizer for a fresh QR code — links are reissued per game, and old ones stop
+              working when a new set is printed.
+            </p>
+            <p className="mt-4 text-xs uppercase tracking-wider text-muted">
+              {scheduleLabel} · {divisionLabel(g.division)} · {g.tier}
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const roleLabel = grant.role === "umpire" ? "Umpire" : "Scorekeeper";
+
   // This slot can hold two people — show everyone assigned, scanned person first.
-  const assignedCrew = keepers
-    .filter((k) => k.gameId === g.id)
-    .map((k) => ({ name: k.name, role: k.role === "Scorer" ? "Scorekeeper" : k.role }));
-  const crew = [
-    ...(keeperName && roleLabel ? [{ name: keeperName, role: roleLabel, isYou: true }] : []),
-    ...assignedCrew
-      .filter((person) => person.name !== keeperName)
-      .map((person) => ({ ...person, isYou: false })),
-  ];
-  const slotNames = assignedCrew.map((person) => person.name);
-  const keeperLabel = (keeperName ? [keeperName, ...slotNames.filter((n) => n !== keeperName)] : slotNames).join(" · ");
+  const assignedCrew = [
+    { name: grant.crew.scorekeeper, role: "Scorekeeper" as const },
+    { name: grant.crew.umpire, role: "Umpire" as const },
+  ].filter((person) => person.name && person.name !== grant.person);
+  const crew = [{ name: grant.person, role: roleLabel, isYou: true }, ...assignedCrew.map((person) => ({ ...person, isYou: false }))];
+  const slotNames = [grant.crew.scorekeeper, grant.crew.umpire].filter(Boolean);
+  const keeperLabel = (grant.person ? [grant.person, ...slotNames.filter((n) => n !== grant.person)] : slotNames).join(" · ");
 
   return (
     <div className="score-public-page min-h-screen bg-bg px-4 py-6">
@@ -74,6 +100,7 @@ export default async function PublicScorePage({
           keeper={keeperLabel}
           label={`${divisionLabel(g.division)} · ${g.tier}`}
           publicMode
+          token={t}
         />
       </main>
     </div>

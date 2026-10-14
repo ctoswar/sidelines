@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
 import { formatRange, getEvent } from "@/lib/events-data";
-import { myRegistrations, unregisterFromEvent, type Registration } from "@/lib/demo-store";
+import { fetchMyRegistrations, unregisterFromEvent, type Registration } from "@/lib/registrations";
 import type { EventItem } from "@/types";
 
 const CHIP = "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide";
@@ -15,7 +15,7 @@ type Entry = { registration: Registration; event: EventItem | null; chip: { labe
 const shortDate = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
-    ? "on this device"
+    ? "just now"
     : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
 
@@ -102,8 +102,12 @@ export function MyEvents() {
   const [confirming, setConfirming] = useState<string | null>(null);
 
   useEffect(() => {
-    setItems(myRegistrations());
-    setReady(true);
+    let alive = true;
+    fetchMyRegistrations()
+      .then((rows) => { if (alive) setItems(rows); })
+      .catch(() => { /* signed out or offline — show the empty state */ })
+      .finally(() => { if (alive) setReady(true); });
+    return () => { alive = false; };
   }, []);
 
   const cancel = useCallback((slug: string) => {
@@ -111,10 +115,14 @@ export function MyEvents() {
       setConfirming(slug);
       return;
     }
-    unregisterFromEvent(slug);
-    setConfirming(null);
-    setItems(myRegistrations());
-    show("Registration cancelled");
+    unregisterFromEvent(slug)
+      .then(() => fetchMyRegistrations())
+      .then((rows) => {
+        setItems(rows);
+        show("Registration cancelled");
+      })
+      .catch(() => show("Could not cancel — try again"))
+      .finally(() => setConfirming(null));
   }, [confirming, show]);
 
   const entries: Entry[] = items.map((registration) => {
@@ -170,7 +178,7 @@ export function MyEvents() {
           {upcoming.length > 0 && section("Upcoming", upcoming)}
           {past.length > 0 && section("Past", past)}
           <p className="text-xs text-muted">
-            Register from any event page — your registrations are saved to this browser in demo mode.
+            Register from any event page — registrations follow your account on every device.
           </p>
         </>
       )}

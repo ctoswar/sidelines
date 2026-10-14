@@ -4,16 +4,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { events, formatRange } from "@/lib/events-data";
-import { getRegistrations } from "@/lib/demo-store";
+import { fetchRegistrationCounts } from "@/lib/registrations";
 
 export default function OrganizerEventsPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const regs = getRegistrations();
-    const next: Record<string, number> = {};
-    for (const r of regs) next[r.slug] = (next[r.slug] ?? 0) + 1;
-    setCounts(next);
+    let alive = true;
+    fetchRegistrationCounts()
+      .then((next) => { if (alive) setCounts(next); })
+      .catch(() => { /* list still renders; counts stay blank */ });
+    return () => { alive = false; };
   }, []);
 
   const sorted = [...events].sort((a, b) => (a.status === b.status ? a.start.localeCompare(b.start) : a.status === "upcoming" ? -1 : 1));

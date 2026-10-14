@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
@@ -10,7 +10,7 @@ import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
 import { GameSelect } from "@/components/dashboard/game-select";
 import type { Game } from "@/types";
-import { getDefaultGameCrew, getGameCrew, saveGameCrew, type GameCrew } from "@/lib/game-crew";
+import { fetchGameCrew, mintGameTokens, saveGameCrew, type GameCrew } from "@/lib/game-crew";
 
 type QrCode = {
   gameId: string;
@@ -26,36 +26,56 @@ const roleStyles = {
   Umpire: "scorekeeper-role scorekeeper-role-umpire",
 } as const;
 
-const initialCrew = getDefaultGameCrew();
+const EMPTY_CREW: GameCrew = { scorekeeper: "", umpire: "" };
 
 const defaultGameId = keepers.find((keeper) => keeper.gameId)?.gameId ?? games[0]?.id ?? "";
 
 export default function ScorekeepersPage() {
   const { show, node } = useToast();
   const [schedule, setSchedule] = useState(games);
-  const [crew, setCrew] = useState<Record<string, GameCrew>>(initialCrew);
+  const [crew, setCrew] = useState<Record<string, GameCrew>>({});
   const [qrQueue, setQrQueue] = useState<QrCode[]>([]);
   const [selectedGameId, setSelectedGameId] = useState(defaultGameId);
+  // Latest crew names per game, so debounced saves never race stale closures.
+  const crewRef = useRef<Record<string, GameCrew>>({});
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
+    let alive = true;
     setSchedule(applyScheduleStartTime(games, readScheduleStartTime()));
-    setCrew(getGameCrew());
-  }, []);
+    fetchGameCrew()
+      .then((map) => {
+        if (!alive) return;
+        crewRef.current = map;
+        setCrew(map);
+      })
+      .catch(() => show("Could not load crew assignments"));
+    return () => { alive = false; };
+  }, [show]);
+
+  useEffect(() => () => Object.values(saveTimers.current).forEach(clearTimeout), []);
 
   const gameNumberById = getFieldGameNumbers(schedule);
   const selectedGame = schedule.find((game) => game.id === selectedGameId) ?? schedule[0];
 
   const updateName = (gameId: string, role: keyof GameCrew, name: string) => {
-    const nextCrew = { ...(crew[gameId] ?? { scorekeeper: "", umpire: "" }), [role]: name };
+    const nextCrew = { ...(crewRef.current[gameId] ?? EMPTY_CREW), [role]: name };
+    crewRef.current = { ...crewRef.current, [gameId]: nextCrew };
     setCrew((current) => ({ ...current, [gameId]: nextCrew }));
-    saveGameCrew(gameId, nextCrew);
     setQrQueue((currentQueue) => currentQueue.filter((code) => code.gameId !== gameId));
+
+    // Typing is local; persistence is a debounced save so the queue form does
+    // not fire a request per keystroke. Generating still saves immediately.
+    clearTimeout(saveTimers.current[gameId]);
+    saveTimers.current[gameId] = setTimeout(() => {
+      saveGameCrew(gameId, nextCrew).catch(() => show("Could not save the crew names"));
+    }, 600);
   };
 
   const gameLabel = (game: Game) => `${game.time} · ${fieldGameLabel(game, gameNumberById)}`;
 
   const generateQr = async (game: Game) => {
-    const current = crew[game.id] ?? { scorekeeper: "", umpire: "" };
+    const current = crewRef.current[game.id] ?? EMPTY_CREW;
     const scorekeeper = current.scorekeeper.trim();
     const umpire = current.umpire.trim();
 
@@ -64,16 +84,28 @@ export default function ScorekeepersPage() {
       return;
     }
 
+    // Flush any pending name save, then mint. The mint rotates the game's
+    // tokens, so codes already printed for it stop working.
+    clearTimeout(saveTimers.current[game.id]);
+    let tokens: { scoreToken: string; umpireToken: string };
     try {
-      const people: Array<{ name: string; role: QrCode["role"]; roleParam: string }> = [
-        { name: scorekeeper, role: "Scorekeeper", roleParam: "scorer" },
-        { name: umpire, role: "Umpire", roleParam: "umpire" },
+      tokens = await mintGameTokens(game.id, { scorekeeper, umpire });
+    } catch {
+      show("Could not generate QR codes");
+      return;
+    }
+
+    try {
+      const people: Array<{ name: string; role: QrCode["role"]; token: string }> = [
+        { name: scorekeeper, role: "Scorekeeper", token: tokens.scoreToken },
+        { name: umpire, role: "Umpire", token: tokens.umpireToken },
       ];
 
       const codes = await Promise.all(people.map(async (person) => {
+        // The URL carries only the capability token — no name or role to edit.
+        // The server resolves both from the token, scoped to this game.
         const params = new URLSearchParams({
-          role: person.roleParam,
-          name: person.name,
+          t: person.token,
           scheduleStart: readScheduleStartTime(),
         });
         const url = `${window.location.origin}/score/${game.id}?${params}`;
@@ -98,7 +130,7 @@ export default function ScorekeepersPage() {
         ...currentQueue.filter((code) => code.gameId !== game.id),
         ...codes,
       ]);
-      show("QR codes added to the queue");
+      show("QR codes added to the queue — earlier links for this game are revoked");
     } catch {
       show("Could not generate QR codes");
     }
