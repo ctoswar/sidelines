@@ -1,4 +1,5 @@
 import { Sidebar, type NavItem } from "@/components/dashboard/sidebar";
+import { requireRole } from "@/server/session";
 
 const items: NavItem[] = [
   { href: "/organizer", label: "Tournaments", also: ["/organizer/tournaments"] },
@@ -9,10 +10,14 @@ const items: NavItem[] = [
   { href: "/organizer/score", label: "Score a game" },
 ];
 
-export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
+export default async function OrganizerLayout({ children }: { children: React.ReactNode }) {
+  // Server-side gate: verifies the session and role before the workspace
+  // renders. The client WorkspaceGuard is gone — it ran after paint.
+  await requireRole("organizer");
+
   return (
     <div className="workspace-shell min-h-screen md:grid md:grid-cols-[248px_1fr]">
-       <Sidebar items={items} roleLabel="Organizer" footer="Harbor Pickleball" />
+      <Sidebar items={items} roleLabel="Organizer" footer="Harbor Pickleball" />
       <main className="workspace-main mx-auto w-full max-w-6xl p-5 md:p-10">{children}</main>
     </div>
   );

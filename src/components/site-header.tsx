@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getSession, homeFor, signOut, type DemoSession } from "@/lib/auth";
+import { homeFor, signOut, useSession } from "@/lib/auth";
 
 /**
  * The public marketing header (landing, About, and every event page).
@@ -12,19 +11,19 @@ import { getSession, homeFor, signOut, type DemoSession } from "@/lib/auth";
  * workspace knew exactly who they were, the public site did not. `EventShell`
  * already tracked the session for the Register button; only this was stale.
  *
- * The session lives in localStorage, so the signed-out markup renders first —
+ * The session is server-backed, so the signed-out markup renders first —
  * identical to the server HTML, so there is no hydration mismatch — and is
- * swapped after mount if a session turns up.
+ * swapped once useSession() resolves.
  */
 export function SiteHeader() {
-  const [session, setSession] = useState<DemoSession | null>(null);
-
-  useEffect(() => { setSession(getSession()); }, []);
+  // useSession() fetches the server session on mount and re-syncs when any
+  // other part of the app signs out — so the header always agrees with the
+  // workspace, without this public page being navigated away.
+  const session = useSession();
 
   // Staying put: everything here is public. Only the header flips back.
   const logOut = () => {
-    signOut();
-    setSession(null);
+    void signOut();
   };
 
   return (
