@@ -555,6 +555,10 @@ body {
 .signup-avatar-upload .signup-avatar, .profile-avatar-upload .profile-avatar { object-fit: cover; }
 .signup-avatar-camera, .profile-avatar-camera { position: absolute; right: -.1rem; bottom: -.1rem; display: grid; place-items: center; width: 1.55rem; height: 1.55rem; border: 2px solid var(--desk-ink); border-radius: 50%; background: var(--profile-accent); color: var(--desk-ink); font-size: 1.1rem; font-weight: 800; line-height: 1; transition: transform .2s ease; }
 .signup-avatar-upload:hover .signup-avatar-camera, .profile-avatar-upload:hover .profile-avatar-camera { transform: rotate(90deg) scale(1.1); }
+.profile-avatar-wrap { position: relative; flex: 0 0 auto; }
+.profile-photo-remove { position: absolute; left: 50%; bottom: -1.1rem; transform: translateX(-50%); white-space: nowrap; border-bottom: 1px dashed currentColor; color: color-mix(in srgb, var(--desk-paper) 70%, transparent); font-size: .64rem; letter-spacing: .05em; }
+.profile-photo-remove:hover:not(:disabled) { color: var(--desk-paper); }
+.profile-photo-remove:disabled { opacity: .5; cursor: default; }
 .signup-preview-copy { min-width: 0; }
 .signup-kicker { color: var(--desk-orange); font-size: .64rem; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
 .signup-preview-name { margin-top: .35rem; overflow: hidden; font-family: var(--font-score), sans-serif; font-size: 1.65rem; font-weight: 700; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }

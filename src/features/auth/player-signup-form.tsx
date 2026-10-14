@@ -15,7 +15,7 @@ import {
   type PlayerSignupInput,
 } from "@/lib/validators/auth";
 import { homeFor, signUp } from "@/lib/auth";
-import { savePlayerProfile } from "@/lib/player-profile";
+import { uploadProfilePicture } from "@/lib/player-profile";
 import { Field } from "./field";
 import { GoogleButton } from "./google-button";
 import { LoadingDots } from "@/components/ui/loading-dots";
@@ -112,7 +112,10 @@ export function PlayerSignupForm({ redirectTo }: { redirectTo?: string }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [step, setStep] = useState(0);
-  const [profilePicture, setProfilePicture] = useState("");
+  // The picture is kept as the picked File and uploaded once the account
+  // exists — the old version serialized it into a base64 data URL and wrote
+  // that to localStorage, which is exactly what Phase 3 removes.
+  const [profilePicture, setProfilePicture] = useState<{ file: File; preview: string } | null>(null);
   const [pictureError, setPictureError] = useState("");
   const { register, handleSubmit, watch, trigger, control, formState: { errors, isSubmitting } } = useForm<PlayerSignupInput>({
     resolver: zodResolver(playerSignupSchema),
@@ -128,25 +131,18 @@ export function PlayerSignupForm({ redirectTo }: { redirectTo?: string }) {
     const res = await signUp("player", data);
     setMessage(res.message);
     if (res.ok) {
-      savePlayerProfile({
-        username: data.username,
-        name: data.name,
-        nickname: data.nickname ?? "",
-        email: data.email,
-        dateOfBirth: data.dateOfBirth,
-        gender: data.gender,
-        nationality: data.nationality,
-        city: data.city,
-        format: data.position,
-        experience: data.level,
-        dominantHand: data.dominantHand ?? "Right",
-        playingSince: data.playingSince ?? "",
-        match: data.match ?? "Prefer not to say",
-        number: data.number ?? "",
-        bio: data.bio ?? "",
-        profileColor: data.profileColor ?? profileColors[0],
-        profilePicture,
-      });
+      // The signup route already wrote the profile row; only the picture is
+      // still missing. Best effort — a failed upload should not strand the
+      // player on this page, they can retry from their profile.
+      if (profilePicture) {
+        try {
+          await uploadProfilePicture(profilePicture.file);
+        } catch {
+          setMessage("Account created, but the photo did not upload — try again from your profile.");
+          router.push(redirectTo?.startsWith("/") ? redirectTo : homeFor("player"));
+          return;
+        }
+      }
       router.push(redirectTo?.startsWith("/") ? redirectTo : homeFor("player"));
     }
   };
@@ -164,7 +160,10 @@ export function PlayerSignupForm({ redirectTo }: { redirectTo?: string }) {
   };
 
   const uploadPicture = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const input = event.target;
+    const file = input.files?.[0];
+    // Reset so choosing the same file twice still fires a change event.
+    input.value = "";
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       setPictureError("Use a JPG, PNG, or WebP image.");
@@ -174,12 +173,10 @@ export function PlayerSignupForm({ redirectTo }: { redirectTo?: string }) {
       setPictureError("Keep your profile picture under 2 MB.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProfilePicture(typeof reader.result === "string" ? reader.result : "");
-      setPictureError("");
-    };
-    reader.readAsDataURL(file);
+    // Object URLs hold the bytes in memory only — nothing is persisted until
+    // the file is uploaded after signup.
+    setProfilePicture({ file, preview: URL.createObjectURL(file) });
+    setPictureError("");
   };
 
   return (
@@ -189,7 +186,7 @@ export function PlayerSignupForm({ redirectTo }: { redirectTo?: string }) {
         <div className="signup-profile-preview" style={{ "--profile-accent": profileColor } as CSSProperties}>
           <div className="signup-profile-orbit" aria-hidden="true" />
           <label className="signup-avatar-upload">
-            {profilePicture ? <img src={profilePicture} alt="Profile preview" className="signup-avatar" /> : <span className="signup-avatar">{initials}</span>}
+            {profilePicture ? <img src={profilePicture.preview} alt="Profile preview" className="signup-avatar" /> : <span className="signup-avatar">{initials}</span>}
             <span className="signup-avatar-camera" aria-hidden="true">+</span>
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPicture} />
           </label>

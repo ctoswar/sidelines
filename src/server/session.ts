@@ -10,22 +10,35 @@ import { redirect } from "next/navigation";
 import { auth, readUserFlags, type AppRole } from "./auth";
 import type { DemoSession } from "@/lib/auth";
 
+/** Full server-side identity, including the id the client never sees. */
+export type SessionUser = DemoSession & { id: string };
+
 /**
- * Loads the signed-in user for the current request. Wrapped in React's cache()
- * so multiple layouts/components in one render share a single lookup.
+ * Loads the signed-in user for the current request, including their id.
+ * Wrapped in React's cache() so multiple layouts/components in one render
+ * share a single lookup.
  */
-export const getServerSession = cache(async (): Promise<DemoSession | null> => {
+export const getServerSessionUser = cache(async (): Promise<SessionUser | null> => {
   const session = await auth.api.getSession({ headers: await headers() });
   const user = session?.user;
   if (!user || typeof user.email !== "string") return null;
 
   const { role, username } = readUserFlags(user);
   return {
+    id: user.id,
     email: user.email,
     name: user.name ?? "",
     username: username ?? undefined,
     role,
   };
+});
+
+/** Same lookup, without the id — what the client-shaped consumers expect. */
+export const getServerSession = cache(async (): Promise<DemoSession | null> => {
+  const user = await getServerSessionUser();
+  if (!user) return null;
+  const { id: _id, ...rest } = user;
+  return rest;
 });
 
 /**
