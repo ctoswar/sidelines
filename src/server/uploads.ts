@@ -76,6 +76,21 @@ export async function saveUserPhoto(userId: string, bytes: Buffer, mime: string)
   return path.posix.join(userId, name);
 }
 
+/**
+ * Writes a team banner under `<root>/team-<userId>/` — a sibling tree, not a
+ * subfolder of the photo dir, so the profile flows (serve, replace, delete,
+ * and their "exactly one file" guarantees) never see banner files.
+ */
+export async function saveTeamBanner(userId: string, bytes: Buffer, mime: string): Promise<string> {
+  const { ext } = PHOTO_TYPES[mime];
+  const owner = `team-${userId}`;
+  const dir = path.join(uploadRoot(), owner);
+  await mkdir(dir, { recursive: true });
+  const name = `${Date.now().toString(36)}-${randomBytes(6).toString("hex")}${ext}`;
+  await writeFile(path.join(dir, name), bytes);
+  return path.posix.join(owner, name);
+}
+
 /** Reads a stored photo's bytes, or null when it is missing or escapes the root. */
 export async function readStoredPhoto(relativePath: string): Promise<Buffer | null> {
   const resolved = resolveStoredPhoto(relativePath);

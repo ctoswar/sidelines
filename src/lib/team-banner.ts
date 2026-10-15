@@ -1,7 +1,7 @@
 // Team banner artwork: preset gradients, accent swatches, and a client-side
-// downscale for uploaded images. localStorage is only ~5 MB, so an upload is
-// cropped to the banner aspect and re-encoded as JPEG before it is stored —
-// the raw file never gets near the browser's storage quota.
+// downscale for uploaded images. An upload is cropped to the banner aspect
+// and re-encoded as JPEG before it leaves the browser, so the server always
+// receives a small, predictably-shaped file instead of the raw original.
 
 export interface BannerPreset { id: string; label: string; css: string }
 
@@ -55,9 +55,9 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 /**
  * Scales the image to cover 1600×500, crops the overflow from the centre, and
- * re-encodes it as JPEG so it fits comfortably in localStorage.
+ * re-encodes it as JPEG — the upload the server receives, never the raw file.
  */
-function toBannerDataUrl(src: string): Promise<string> {
+function toBannerFile(src: string): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onerror = () => reject(new Error("That file does not look like a usable image. Try a JPG or PNG."));
@@ -71,15 +71,22 @@ function toBannerDataUrl(src: string): Promise<string> {
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
       ctx.drawImage(img, (BANNER_W - w) / 2, (BANNER_H - h) / 2, w, h);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error("Could not prepare that image. Try a JPG or PNG."));
+          resolve(new File([blob], "banner.jpg", { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        0.82,
+      );
     };
     img.src = src;
   });
 }
 
-/** Turns a picked file into a stored banner, or throws a message worth showing. */
-export async function bannerFromFile(file: File): Promise<string> {
+/** Turns a picked file into a cropped JPEG ready for upload, or throws a message worth showing. */
+export async function bannerFromFile(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) throw new Error("That file is not an image.");
   const raw = await readFileAsDataUrl(file);
-  return toBannerDataUrl(raw);
+  return toBannerFile(raw);
 }

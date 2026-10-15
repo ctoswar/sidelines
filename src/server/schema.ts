@@ -278,8 +278,11 @@ export const gameResults = pgTable("game_results", {
 
 export const teamProfiles = pgTable("team_profiles", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
-  /** null = the shared demo team; a real owner once auth lands in Phase 2. */
-  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+  /** One team per owner; Phase 2 auth landed, so every row has a real user. */
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   tagline: text("tagline").default("").notNull(),
   /** Relative banner path under UPLOAD_DIR, or "" to use `preset`. */

@@ -8,6 +8,13 @@
       "when": 1791912912232,
       "tag": "0000_puzzling_the_liberteens",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792073803386,
+      "tag": "0001_smart_omega_flight",
+      "breakpoints": true
     }
   ]
 }

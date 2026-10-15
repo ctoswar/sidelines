@@ -8,7 +8,7 @@
 // The one real change: Better Auth keeps the session in an httpOnly cookie on
 // the server, so the session can no longer be read synchronously from
 // localStorage. getSession() stays synchronous for callbacks that already
-// exist (demo-store, event handlers), but it reads a module-level cache that
+// exist (event handlers), but it reads a module-level cache that
 // refreshSession()/useSession() fill from the server. Components that need
 // the session on mount use useSession().
 

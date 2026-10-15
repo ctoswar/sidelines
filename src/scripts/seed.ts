@@ -3,7 +3,7 @@
  *
  *   - events + event_details  <- src/lib/events-data.ts, src/lib/event-detail.ts
  *   - tournaments/teams/games/crew <- src/lib/mock-data.ts
- *   - team profile, roster, open tournaments <- demo-store defaults
+ *   - team profile <- src/lib/team; roster, open tournaments <- mock-data
  *   - two demo accounts (player + organizer) with DEMO_PASSWORD
  *
  * Idempotent: every insert upserts on its natural key, so re-running after
@@ -21,7 +21,7 @@ import { getEventDetail } from "../lib/event-detail";
 import { events as eventCatalog } from "../lib/events-data";
 import { DEFAULT_PLAYER_PROFILE } from "../lib/player-profile";
 import { games, keepers, openTournaments, roster, teams, tournaments, MY_TEAM } from "../lib/mock-data";
-import { DEFAULT_TEAM } from "../lib/demo-store";
+import { DEFAULT_TEAM } from "../lib/team";
 import { DEFAULT_PRESET } from "../lib/team-banner";
 
 const DEMO_PLAYER_ID = "demo-user-player";
@@ -265,7 +265,7 @@ async function seedPlayerWorkspace() {
     .insert(t.teamProfiles)
     .values({
       id: "demo-team-profile",
-      userId: null,
+      userId: DEMO_PLAYER_ID,
       name: MY_TEAM,
       tagline: DEFAULT_TEAM.tagline,
       preset: DEFAULT_PRESET,
@@ -273,8 +273,10 @@ async function seedPlayerWorkspace() {
       division: DEFAULT_TEAM.division,
       seed: DEFAULT_TEAM.seed,
     })
+    // One row per owner (Phase 5 made user_id unique): update whatever row
+    // the demo player already owns rather than inserting a second one.
     .onConflictDoUpdate({
-      target: t.teamProfiles.id,
+      target: t.teamProfiles.userId,
       set: { name: DEFAULT_TEAM.name, accent: DEFAULT_TEAM.accent },
     });
 

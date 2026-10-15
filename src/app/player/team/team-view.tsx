@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
 import { JOIN_CODE, roster } from "@/lib/mock-data";
-import { DEFAULT_TEAM, getTeam, saveTeam, type TeamProfile } from "@/lib/demo-store";
+import { DEFAULT_TEAM, deleteTeamBanner, fetchTeam, saveTeam, uploadTeamBanner, type TeamProfile } from "@/lib/team";
 import {
   ACCENTS,
   BANNER_PRESETS,
@@ -34,7 +34,19 @@ export function TeamView() {
   const [busy, setBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setTeam(getTeam()); }, []);
+  // The team lives in Postgres now, so it arrives after mount. Until then the
+  // page shows the seeded defaults — identical server and client HTML.
+  useEffect(() => {
+    let alive = true;
+    fetchTeam()
+      .then((loaded) => {
+        if (!alive) return;
+        setTeam(loaded);
+        setDraft(loaded);
+      })
+      .catch((error: Error) => alive && show(error.message));
+    return () => { alive = false; };
+  }, [show]);
 
   const shown = editing ? draft : team;
   const patch = (next: Partial<TeamProfile>) => setDraft((d) => ({ ...d, ...next }));
@@ -50,7 +62,12 @@ export function TeamView() {
     setBusy(true);
     setError("");
     try {
-      patch({ banner: await bannerFromFile(file) });
+      // Crop client-side, then upload — the old version kept the resulting
+      // data URL in this browser's localStorage instead.
+      const saved = await uploadTeamBanner(await bannerFromFile(file));
+      setTeam(saved);
+      patch({ banner: saved.banner });
+      show("Banner updated");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not use that image.");
     } finally {
@@ -58,7 +75,7 @@ export function TeamView() {
     }
   };
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     const name = draft.name.trim();
     if (name.length < 2) { setError("Team name needs at least 2 characters."); return; }
@@ -70,14 +87,23 @@ export function TeamView() {
       tagline: draft.tagline.trim(),
       seed: Math.min(64, Math.max(1, Math.round(draft.seed) || 1)),
     };
-    const saved = saveTeam(next);
-    if (!saved) {
-      setError("Could not save that banner — it is too large for this browser's storage. Try a smaller image.");
-      return;
+
+    setBusy(true);
+    setError("");
+    try {
+      let saved = await saveTeam(next);
+      // Choosing a preset over an uploaded banner clears it in the same save,
+      // so Cancel still reverts the whole choice.
+      if (!next.banner && saved.banner) saved = await deleteTeamBanner();
+      setTeam(saved);
+      setDraft(saved);
+      closeEdit();
+      show("Team updated");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the team.");
+    } finally {
+      setBusy(false);
     }
-    setTeam(saved);
-    closeEdit();
-    show("Team updated");
   };
 
   const copyCode = () => {
@@ -225,7 +251,7 @@ export function TeamView() {
               />
             </div>
             <p className="mt-2 text-xs text-muted">
-              We crop it to 1600 × 500 and keep it in this browser, so it stays with your team on this device.
+              We crop it to 1600 × 500 before uploading, so it is stored with your account and follows your team to any device.
             </p>
           </div>
 

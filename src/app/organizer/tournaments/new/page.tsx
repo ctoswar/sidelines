@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { DEFAULT_START_TIME, saveScheduleStartTime } from "@/lib/schedule-config";
+import { DEFAULT_START_TIME } from "@/lib/schedule-config";
+import { saveScheduleStart } from "@/lib/tournaments";
 
 const steps = ["Basics", "Rules", "Divisions"] as const;
 
@@ -20,14 +21,25 @@ export default function NewTournamentPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const next = () => {
+  const next = async () => {
     if (step < 2) {
       setStep(step + 1);
       return;
     }
-    saveScheduleStartTime(startTime);
-    router.push("/organizer");
+    // The schedule start now lands on the live tournament row instead of
+    // this browser, so wait for the save before leaving the page.
+    setSaving(true);
+    setError("");
+    try {
+      await saveScheduleStart(startTime);
+      router.push("/organizer");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the start time.");
+      setSaving(false);
+    }
   };
 
   return (
@@ -77,9 +89,17 @@ export default function NewTournamentPage() {
           </div>
         )}
 
+        {error && (
+          <p role="alert" className="mt-4 rounded-md border border-flag px-3 py-2 text-sm font-medium text-flag">
+            {error}
+          </p>
+        )}
+
         <div className="mt-6 flex gap-3">
           {step > 0 && <button className="btn" onClick={() => setStep(step - 1)}>Back</button>}
-          <button className="btn btn-pri" onClick={next}>{step === 2 ? "Create tournament" : "Continue"}</button>
+          <button className="btn btn-pri" onClick={next} disabled={saving}>
+            {saving ? "Saving…" : step === 2 ? "Create tournament" : "Continue"}
+          </button>
         </div>
       </div>
     </>
