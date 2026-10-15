@@ -1,10 +1,55 @@
-# Postgres for Sidelines.
+# Sidelines stack: Next.js app + optional Postgres.
 #
-# Local dev:   docker compose up -d db
-# Pi:          same command — named volume persists across restarts/updates.
+#   docker compose up -d db      # only on a machine WITHOUT a host Postgres
+#   docker compose up -d app     # the app (builds a production image)
+#
+# Two supported arrangements:
+#
+#   1. Host Postgres (the current Pi setup) — run only the app service and
+#      keep DATABASE_URL in .env pointing at the host, e.g.
+#      postgresql://...@192.168.75.101:5432/sidelines. The app container
+#      reaches that over the LAN. No depends_on db, so `up -d app` works
+#      alone and never fights the host Postgres for port 5432.
+#
+#   2. Full compose stack (fresh machine) — run both services and point
+#      DATABASE_URL in .env at the compose network: db:5432.
+#
+# Migrations/seeds always run from a dev machine, not the container:
+#   npm run db:migrate && npm run db:seed
+#
 # Backups:     docker compose exec db pg_dump -U sidelines sidelines > dump.sql
 
 services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Absolute path inside the container (WORKDIR is /app); overrides the
+      # dev-machine value from .env. Persisted by the bind mount below.
+      UPLOAD_DIR: /app/var/uploads
+    ports:
+      # LAN-open by default: players' phones open QR scoring URLs directly.
+      # Tighten to "127.0.0.1:3000:3000" if a reverse proxy on this host
+      # terminates traffic.
+      - "3000:3000"
+    volumes:
+      # Profile photos + team banners must survive redeploys.
+      - ./var/uploads:/app/var/uploads
+    healthcheck:
+      # node:22-slim ships no curl/wget; Node 22 has global fetch.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped

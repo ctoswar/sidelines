@@ -1,0 +1,22 @@
+# Never bake secrets or host artifacts into the image.
+.env
+.env*
+node_modules
+.next
+var
+coverage
+*.log
+*.tsbuildinfo
+
+# VCS/CI and repo docs
+.git
+.github
+README.md
+
+# Host-side only: migrations run from a dev machine, not the container.
+drizzle
+
+# Container definitions aren't needed inside the build context.
+Dockerfile
+.dockerignore
+docker-compose.yml

@@ -20,6 +20,32 @@ npm run build
 npx tsc --noEmit
 ```
 
+## Deploy with Docker
+
+The `Dockerfile` is a multi-stage build that compiles Next.js standalone
+output and runs it in a slim `node:22` runtime image. It is multi-arch, so
+the same file builds on x86 machines and on the Raspberry Pi.
+
+```bash
+cp .env.example .env   # fill in DATABASE_URL, BETTER_AUTH_SECRET, UPLOAD_DIR
+npm run db:migrate     # from a dev machine, against the target database
+npm run db:seed        # optional: demo data
+docker compose up -d app
+```
+
+Notes:
+
+- The image never contains secrets: `.env` is gitignored, excluded via
+  `.dockerignore`, and injected at runtime with `env_file`.
+- Uploads (profile photos, team banners) are bind-mounted from `./var/uploads`
+  so they survive redeploys. Back up that directory alongside the database.
+- Migrations are not baked into the image — run them from a dev machine before
+  deploying (`drizzle-kit` is a dev dependency).
+- `docker-compose.yml` supports two arrangements: the app next to a
+  **host-installed Postgres** (the current Pi setup — run only the `app`
+  service), or the full stack on a fresh machine (run `app` + `db` and point
+  `DATABASE_URL` at `db:5432`).
+
 ## Product areas
 
 ### Public

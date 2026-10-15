@@ -1,0 +1,2 @@
+# Docker builds on Linux fail on CRLF in Dockerfiles; keep it LF.
+Dockerfile text eol=lf
