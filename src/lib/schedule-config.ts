@@ -1,9 +1,15 @@
+// Schedule start-time math.
+//
+// The stored value itself lives on the live tournament row (`schedule_start`,
+// served by /api/tournaments/live) — this module keeps only the pure parts:
+// parsing "HH:MM", formatting it back, and shifting the seeded schedule.
+
 import type { Game } from "@/types";
 
-const START_TIME_KEY = "sidelines.demo.schedule-start-time";
 export const DEFAULT_START_TIME = "09:00";
 
-function minutesFromTime(value: string) {
+/** "09:30" -> minutes since midnight; null when the string is not a day time. */
+export function minutesFromTime(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
   if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
     return null;
@@ -29,18 +35,6 @@ function labelFromMinutes(total: number) {
   const suffix = hours24 >= 12 ? "PM" : "AM";
   const hours12 = hours24 % 12 || 12;
   return `${hours12}:${String(minutes).padStart(2, "0")} ${suffix}`;
-}
-
-export function readScheduleStartTime() {
-  if (typeof window === "undefined") return DEFAULT_START_TIME;
-  const value = window.localStorage.getItem(START_TIME_KEY);
-  return minutesFromTime(value ?? "") === null ? DEFAULT_START_TIME : value!;
-}
-
-export function saveScheduleStartTime(value: string) {
-  if (minutesFromTime(value) !== null && typeof window !== "undefined") {
-    window.localStorage.setItem(START_TIME_KEY, value);
-  }
 }
 
 /** Shift the seeded schedule while preserving the spacing between rounds. */

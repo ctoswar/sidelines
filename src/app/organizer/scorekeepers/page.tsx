@@ -7,10 +7,11 @@ import { useToast } from "@/components/dashboard/use-toast";
 import { games, keepers } from "@/lib/mock-data";
 import { divisionLabel } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
-import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
+import { applyScheduleStartTime, DEFAULT_START_TIME } from "@/lib/schedule-config";
 import { GameSelect } from "@/components/dashboard/game-select";
 import type { Game } from "@/types";
 import { fetchGameCrew, mintGameTokens, saveGameCrew, type GameCrew } from "@/lib/game-crew";
+import { fetchLiveTournament } from "@/lib/tournaments";
 
 type QrCode = {
   gameId: string;
@@ -36,13 +37,22 @@ export default function ScorekeepersPage() {
   const [crew, setCrew] = useState<Record<string, GameCrew>>({});
   const [qrQueue, setQrQueue] = useState<QrCode[]>([]);
   const [selectedGameId, setSelectedGameId] = useState(defaultGameId);
+  // The QR URL bakes this in, so it arrives from the server before any code
+  // is generated; until then the schedule shows the default 09:00 slots.
+  const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
   // Latest crew names per game, so debounced saves never race stale closures.
   const crewRef = useRef<Record<string, GameCrew>>({});
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     let alive = true;
-    setSchedule(applyScheduleStartTime(games, readScheduleStartTime()));
+    fetchLiveTournament()
+      .then((tournament) => {
+        if (!alive) return;
+        setStartTime(tournament.scheduleStart);
+        setSchedule(applyScheduleStartTime(games, tournament.scheduleStart));
+      })
+      .catch(() => show("Could not load the schedule start time"));
     fetchGameCrew()
       .then((map) => {
         if (!alive) return;
@@ -106,7 +116,7 @@ export default function ScorekeepersPage() {
         // The server resolves both from the token, scoped to this game.
         const params = new URLSearchParams({
           t: person.token,
-          scheduleStart: readScheduleStartTime(),
+          scheduleStart: startTime,
         });
         const url = `${window.location.origin}/score/${game.id}?${params}`;
         const dataUrl = await QRCode.toDataURL(url, {

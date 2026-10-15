@@ -8,9 +8,10 @@ import { useToast } from "@/components/dashboard/use-toast";
 import { games } from "@/lib/mock-data";
 import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
-import { applyScheduleStartTime, readScheduleStartTime } from "@/lib/schedule-config";
+import { applyScheduleStartTime, DEFAULT_START_TIME } from "@/lib/schedule-config";
 import { applyGameResults, fetchGameResults, subscribeToGameResults, type GameResults } from "@/lib/game-results";
 import { fetchGameCrew, subscribeToGameCrew, type GameCrewMap } from "@/lib/game-crew";
+import { fetchLiveTournament } from "@/lib/tournaments";
 
 const pill = (active: boolean) =>
   `rounded-full border px-3.5 py-1.5 text-sm font-bold transition-colors ${
@@ -25,7 +26,17 @@ export default function SchedulePage() {
   const [tier, setTier] = useState<string | null>(null);
   const [results, setResults] = useState<GameResults>({});
   const [crew, setCrew] = useState<GameCrewMap>({});
+  const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
   const [selectedGame, setSelectedGame] = useState<(typeof games)[number] | null>(null);
+
+  // The first slot lives on the live tournament row; failures keep the default.
+  useEffect(() => {
+    let alive = true;
+    fetchLiveTournament()
+      .then((tournament) => { if (alive) setStartTime(tournament.scheduleStart); })
+      .catch(() => { /* the schedule renders from the default 09:00 slot */ });
+    return () => { alive = false; };
+  }, []);
 
   // Results + crew come from the server; failures keep the last good overlay.
   useEffect(() => {
@@ -48,7 +59,7 @@ export default function SchedulePage() {
     return subscribeToGameCrew(refreshCrew);
   }, []);
 
-  const base = applyScheduleStartTime(games, readScheduleStartTime());
+  const base = applyScheduleStartTime(games, startTime);
   const schedule = applyGameResults(base, results);
 
   const tiers = divisions.find((d) => d.id === division)?.tiers ?? [];
@@ -162,7 +173,7 @@ export default function SchedulePage() {
               <button className="btn flex-1" onClick={() => setSelectedGame(null)}>Close</button>
               <Link
                 className="btn btn-pri flex-1 text-center"
-                href={`/organizer/score?game=${selectedGame.id}&scheduleStart=${encodeURIComponent(readScheduleStartTime())}`}
+                href={`/organizer/score?game=${selectedGame.id}&scheduleStart=${encodeURIComponent(startTime)}`}
               >
                 Open scorecard
               </Link>
