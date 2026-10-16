@@ -2,12 +2,17 @@
 
 Sidelines is a pickleball tournament operations app for organizers, players, scorekeepers, officials, and spectators. It covers scheduling, live point scoring, player profiles, event pages, standings, and QR-based court assignments.
 
-Built with Next.js App Router, TypeScript, React, Tailwind CSS, Zod, React Hook Form, and QRCode.
+Built with Next.js App Router, TypeScript, React, Tailwind CSS, Zod, React Hook Form, and QRCode, backed by PostgreSQL through Drizzle ORM with Better Auth for accounts and sessions.
 
 ## Run locally
 
+Point `.env` at any PostgreSQL database (a Raspberry Pi, a container, or a hosted instance — the app does not need one on the dev machine):
+
 ```bash
+cp .env.example .env   # fill in DATABASE_URL, BETTER_AUTH_SECRET, UPLOAD_DIR
 npm install
+npm run db:migrate
+npm run db:seed        # demo accounts and content
 npm run dev
 ```
 
@@ -16,8 +21,17 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Production checks
 
 ```bash
+npm run lint
 npm run build
 npx tsc --noEmit
+```
+
+The build is database-free: every page that reads data renders per request (`force-dynamic`), so it succeeds with no reachable database.
+
+Per-phase verification harnesses exercise each vertical against a running server (`npm run start`) with a seeded database — SSR markers, mutation proofs (flip a row, watch the page follow, restore), and API contracts:
+
+```bash
+npx tsx src/scripts/verify-phase7.ts   # also verify-phase1 … verify-phase6
 ```
 
 ## Deploy with Docker
@@ -56,7 +70,7 @@ Notes:
 
 ### Authentication and signup
 
-- `/login` — demo login.
+- `/login` — email/password sign-in (Better Auth).
 - `/signup` — player or organizer account selection.
 - `/signup/player` — guided three-step player setup:
   1. Identity and username
@@ -70,6 +84,7 @@ Player signup supports profile picture uploads using JPG, PNG, or WebP files up 
 
 - `/organizer` — tournament dashboard.
 - `/organizer/tournaments/new` — create a tournament with pickleball match rules.
+- `/organizer/events` — event hub list with registration counts; per-event hubs manage registrations and announcements.
 - `/organizer/teams` — manage teams and player formats.
 - `/organizer/schedule` — view court schedule, match status, and assigned crew popups.
 - `/organizer/scorekeepers` — assign Scorekeeper and Umpire names, select a scheduled match, generate role-specific QR codes, and manage the QR queue.
@@ -81,46 +96,54 @@ Player signup supports profile picture uploads using JPG, PNG, or WebP files up 
 - `/player/schedule` — personal match schedule.
 - `/player/team` — team profile and roster.
 - `/player/tournaments` — available tournaments.
+- `/player/registrations` — registered events with cancel flows.
 - `/player/profile` — editable player identity, pickleball playbook, profile picture, and bio.
 
 ### QR scoring
 
-QR codes open a role-specific scoring screen at `/score/[game]` without requiring a separate scorekeeper account. The scoring model uses pickleball defaults:
+QR codes open a role-specific scoring screen at `/score/[game]` without requiring a separate scorekeeper account. Each link carries only a capability token minted by the organizer; the person's name and role are resolved server-side from `game_crew`, so old or edited links simply get an invalid-link screen. The scoring model uses pickleball defaults:
 
 - First to 11 points
 - Win by 2
 - Point-based scoring
 - Per-side timeouts
-- Offline event queue in the demo scorer
+- Offline indicator with a local event count (UI only — the final result is submitted to the server when the match finishes)
 
 When a match reaches the winning score, its final result is persisted and the schedule updates to **Done**.
 
-## Demo data and persistence
+## Data and persistence
 
-This repository currently uses browser-local demo storage rather than a backend database. The following are persisted in `localStorage`:
+All application data lives in PostgreSQL, read and written through Drizzle:
 
-- Demo accounts and session
-- Player profile and profile picture
-- Player/team settings
-- Scorekeeper crew assignments
-- Completed match results
-- Event registrations and announcements
+- Accounts and sessions (Better Auth), player profiles, and organizations
+- Event catalogue and each event's generated detail aggregate
+- Tournaments, pool tables, the schedule of games, and final results
+- Event registrations and live announcements
+- QR crew assignments and their capability tokens
+- Team profiles, the team roster, and open-tournament listings
 
-Replace these demo stores before production use. Profile images are stored as browser data URLs for the demo and should be moved to managed object storage in production.
+Uploads (profile photos, team banners) are files on disk under `UPLOAD_DIR`, bind-mounted in Docker. Move them to object storage before running multiple app instances.
 
-## Demo login
+Realtime updates (results, crew saves, schedule changes, registrations, announcements) flow over an in-process SSE bus with an automatic polling fallback; see `src/server/realtime.ts`.
 
-For the original demo shortcut, emails beginning with `player` open the player workspace. Other email addresses open the organizer workspace. Newly created accounts are stored locally and sign in immediately.
+## Demo accounts
 
-## Replace the mocks
+`npm run db:seed` creates two accounts with the password `sidelines-demo`:
 
-- `src/lib/auth.ts` — replace demo authentication with Supabase, Better Auth, Auth.js, or another server-backed provider.
-- `src/lib/mock-data.ts` — replace seeded teams, matches, tournaments, and crew with database queries.
-- `src/lib/player-profile.ts` — replace browser profile storage with an authenticated profile API.
-- `src/lib/game-results.ts` — replace browser result storage with server-backed match results.
-- `src/lib/game-crew.ts` — replace browser crew storage with organizer-authorized assignments.
-- Add `middleware.ts` so `/organizer/*` requires the organizer role and `/player/*` requires the player role.
+- `player@example.com` — player workspace
+- `organizer@example.com` — organizer workspace
+
+Any other account uses the role chosen at signup. Google sign-in is a stub; email/password is the working path.
+
+## Repository map
+
+- `src/server/` — Drizzle schema, session helpers, and the read loaders (`events.ts`, `schedule.ts`, `team.ts`, `score.ts`)
+- `src/app/api/` — route handlers for auth (Better Auth), events, registrations, announcements, scoring, team profiles, tournaments, and the realtime stream
+- `src/server/realtime.ts` + `/api/stream` — the SSE bus; `src/lib/realtime.ts` is the client subscription with polling fallback
+- `src/lib/mock-data.ts`, `src/lib/events-data.ts`, `src/lib/event-detail.ts` — seed sources and type homes; no page reads them at runtime
+- `src/scripts/seed.ts` — loads those modules into the database
+- `src/scripts/verify-phase*.ts` — per-phase verification harnesses
 
 ## Event data
 
-`src/lib/event-detail.ts` generates sample pickleball teams, court schedules, scores, player stats, pools, brackets, and standings from `src/lib/events-data.ts`. Replace `getEventDetail()` with database queries; the UI consumes the existing `EventDetail` shape.
+The event catalogue (`events`) and each event's generated aggregate (`event_details`) live in PostgreSQL, seeded from `src/lib/event-detail.ts`, which derives them from `src/lib/events-data.ts`. Pages and APIs read the database copy; the UI consumes the unchanged `EventDetail` shape, and `verify-phase4.ts` asserts the two representations stay identical.
