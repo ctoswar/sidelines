@@ -37,7 +37,6 @@ function makeInitial(scores: [number, number]): State {
 
 // In the real app each action becomes a game_events row (queued locally when offline).
 function makeReducer(names: [string, string]) {
-  const initial = makeInitial([0, 0]);
   return function reducer(s: State, a: Action): State {
     const queued = (n = 1) => (s.offline ? s.queued + n : s.queued);
     switch (a.type) {
