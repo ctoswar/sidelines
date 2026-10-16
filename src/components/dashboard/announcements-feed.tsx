@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { getEvent } from "@/lib/events-data";
 import { fetchAnnouncements, type Announcement } from "@/lib/announcements";
 import { useLiveSubscription } from "@/lib/realtime";
 
@@ -46,7 +45,7 @@ export function AnnouncementsFeed() {
       </div>
       <ul className="mt-3 space-y-3">
         {items.map((a) => {
-          const event = getEvent(a.slug);
+          const event = a.event ?? null;
           return (
             <li key={a.id} className="border-l-4 border-flag pl-3">
               <p className="font-bold">{a.title}</p>

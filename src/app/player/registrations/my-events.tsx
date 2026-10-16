@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
-import { formatRange, getEvent } from "@/lib/events-data";
+import { formatRange } from "@/lib/events-data";
 import { fetchMyRegistrations, unregisterFromEvent, type Registration } from "@/lib/registrations";
 import type { EventItem } from "@/types";
 
@@ -126,7 +126,10 @@ export function MyEvents() {
   }, [confirming, show]);
 
   const entries: Entry[] = items.map((registration) => {
-    const event = getEvent(registration.slug) ?? null;
+    // The event rides on the payload (Phase 7 joined it into GET
+    // /api/registrations); null only if the row outlived its event, which
+    // the cascade FK prevents — the fallbacks below still handle it.
+    const event = registration.event ?? null;
     return { registration, event, chip: chipFor(event) };
   });
   const upcoming = entries.filter((e) => e.event && e.event.status !== "past");

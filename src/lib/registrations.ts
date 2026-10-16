@@ -7,6 +7,7 @@
 // the answer rather than optimistic state.
 
 import { parse } from "./api-client";
+import type { EventItem } from "@/types";
 
 export type Registration = {
   id: string;
@@ -17,6 +18,12 @@ export type Registration = {
   at: string;
   /** The registrant's account role, or null when their account is gone. */
   role: string | null;
+  /**
+   * The joined event row — carried by GET /api/registrations (the "My
+   * events" list renders from it); the per-event inbox omits it, the event
+   * being the one the caller already asked for.
+   */
+  event?: EventItem | null;
 };
 
 /** Per-event state: everyone gets count + their own flag; organizers the list. */
@@ -58,12 +65,4 @@ export async function removeRegistration(slug: string, id: string): Promise<void
       method: "DELETE",
     }),
   );
-}
-
-/** Live registration counts per event slug — the event hub list feed. */
-export async function fetchRegistrationCounts(): Promise<Record<string, number>> {
-  const body = await parse<{ events: Array<{ slug: string; registrationCount: number }> }>(
-    await fetch("/api/events"),
-  );
-  return Object.fromEntries(body.events.map((e) => [e.slug, e.registrationCount]));
 }

@@ -5,7 +5,8 @@
 //
 // The seeded event pages keep their read-only `event_details.announcements`
 // strings; this table is what organizers publish live, shown in the player
-// dashboard feed and the event hub.
+// dashboard feed and the event hub. Reads join the event row (Phase 7) so
+// the feed renders event names without a static catalogue lookup.
 
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
@@ -13,7 +14,7 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
-import { eventExists } from "@/server/events";
+import { eventSelection, loadEvent } from "@/server/events";
 import { announcementSchema } from "@/lib/validators/events";
 
 export async function GET(request: Request) {
@@ -33,8 +34,11 @@ export async function GET(request: Request) {
       body: t.announcements.body,
       author: t.announcements.author,
       at: t.announcements.at,
+      // event_slug is a cascade FK, so every announcement has its event.
+      event: eventSelection,
     })
     .from(t.announcements)
+    .innerJoin(t.events, eq(t.announcements.eventSlug, t.events.slug))
     .where(conditions)
     .orderBy(desc(t.announcements.at), desc(t.announcements.id))
     .limit(limit ?? 500);
@@ -66,7 +70,8 @@ export async function POST(request: Request) {
   }
 
   const { slug, title, body: text } = parsed.data;
-  if (!(await eventExists(slug))) {
+  const event = await loadEvent(slug);
+  if (!event) {
     return NextResponse.json({ message: "Event not found." }, { status: 404 });
   }
 
@@ -83,5 +88,7 @@ export async function POST(request: Request) {
     });
 
   publish("announcements");
-  return NextResponse.json({ announcement: row });
+  // Same event join as the reads, so the returned row renders anywhere a
+  // fetched one does (the event hub prepends it to its list).
+  return NextResponse.json({ announcement: { ...row, event } });
 }

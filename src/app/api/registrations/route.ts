@@ -1,12 +1,17 @@
 // My registrations.
 //
-//   GET /api/registrations — the signed-in user's registrations, newest first.
+//   GET /api/registrations - the signed-in user's registrations, newest first.
+//
+// Each row carries the joined event so "My events" renders names, dates and
+// chips straight from the payload (Phase 7 dropped its static catalogue
+// lookup); event_slug is a cascade FK, so the event side always matches.
 
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
+import { eventSelection } from "@/server/events";
 
 export async function GET() {
   const user = await getServerSessionUser();
@@ -20,9 +25,11 @@ export async function GET() {
       name: t.registrations.name,
       at: t.registrations.at,
       role: t.user.role,
+      event: eventSelection,
     })
     .from(t.registrations)
     .leftJoin(t.user, eq(t.registrations.userId, t.user.id))
+    .innerJoin(t.events, eq(t.registrations.eventSlug, t.events.slug))
     .where(eq(t.registrations.userId, user.id))
     .orderBy(desc(t.registrations.at));
 

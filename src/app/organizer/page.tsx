@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { tournaments } from "@/lib/mock-data";
+import { loadTournaments } from "@/server/schedule";
 
 export const metadata = { title: "Tournaments – Sidelines" };
+export const dynamic = "force-dynamic";
 
-export default function TournamentsPage() {
+export default async function TournamentsPage() {
+  const tournaments = await loadTournaments();
   return (
     <>
       <PageHeader title="Tournaments" subtitle={`${tournaments.length} tournaments`}>

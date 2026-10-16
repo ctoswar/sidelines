@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
-import { JOIN_CODE, roster } from "@/lib/mock-data";
+import { JOIN_CODE } from "@/lib/mock-data";
 import { DEFAULT_TEAM, deleteTeamBanner, fetchTeam, saveTeam, uploadTeamBanner, type TeamProfile } from "@/lib/team";
+import type { RosterPlayer } from "@/types";
 import {
   ACCENTS,
   BANNER_PRESETS,
@@ -25,7 +26,8 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-export function TeamView() {
+/** The team profile — roster arrives from the server page (Phase 7 DB swap). */
+export function TeamView({ roster }: { roster: RosterPlayer[] }) {
   const { show, node } = useToast();
   const [team, setTeam] = useState<TeamProfile>(DEFAULT_TEAM);
   const [draft, setDraft] = useState<TeamProfile>(DEFAULT_TEAM);
