@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema, type SignupInput } from "@/lib/validators/auth";
 import { Field } from "./field";
-import { GoogleButton } from "./google-button";
 
 export function SignupForm() {
   const [message, setMessage] = useState("");
@@ -18,7 +17,6 @@ export function SignupForm() {
 
   return (
     <>
-      <GoogleButton onResult={setMessage} />
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <Field label="Username" placeholder="e.g. maya.reyes" autoComplete="username" spellCheck={false} autoCapitalize="none" error={errors.username?.message} {...register("username")} />
         <Field label="Full name" autoComplete="name" error={errors.name?.message} {...register("name")} />

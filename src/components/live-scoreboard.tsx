@@ -22,7 +22,7 @@ export function LiveScoreboard() {
   ];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-field text-white shadow-xl" aria-label="Live scoreboard demo">
+    <div className="overflow-hidden rounded-2xl border border-line bg-field text-white shadow-xl" aria-label="Live scoreboard">
       <div className="flex items-center justify-between bg-black/25 px-5 py-3 text-sm">
         <span className="flex items-center gap-2 font-bold">
           <span className="pulse h-2.5 w-2.5 rounded-full bg-[#ff5a3c]" />

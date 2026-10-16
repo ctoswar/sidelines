@@ -32,7 +32,7 @@ export function ProfileView() {
   const session = useSession();
 
   // The profile lives in Postgres now, so it arrives after mount. Until then
-  // the page shows blanks rather than the seed's demo identity.
+  // the page shows blanks rather than seeded fixture data.
   useEffect(() => {
     if (!session) return;
     let alive = true;

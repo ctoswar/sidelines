@@ -6,7 +6,7 @@
 //   1. Public events (spectator side) — `events` is the queryable catalogue,
 //      and `event_details` holds the large generated aggregate (teams, match
 //      list, pools, bracket, stats, MVP, crew) that `src/lib/event-detail.ts`
-//      used to synthesize per request. That content is read-only demo data, so
+//      used to synthesize per request. That content is read-only fixture data, so
 //      it stays as jsonb rather than a dozen normalized tables; user-generated
 //      content (registrations, announcements) gets real tables.
 //
@@ -160,7 +160,7 @@ export const events = pgTable("events", {
   index("events_live_idx").on(t.live),
 ]);
 
-/** The generated event aggregate — read-only demo content, consumed whole. */
+/** The generated event aggregate — read-only fixture content, consumed whole. */
 export const eventDetails = pgTable("event_details", {
   eventId: text("event_id")
     .primaryKey()

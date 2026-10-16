@@ -1,7 +1,7 @@
 // Client-side auth facade.
 //
 // Every consumer in the app talks to this module through the same shape the
-// old localStorage demo exposed — getSession(), signIn(), signUp(), signOut(),
+// previous localStorage-based prototype exposed — getSession(), signIn(), signUp(), signOut(),
 // homeFor(), AUTH_CHANGED_EVENT — so switching the backing store did not
 // mean rewriting call sites.
 //
@@ -25,7 +25,7 @@ export type AuthResult =
   | { ok: true; message: string; role: Role }
   | { ok: false; message: string };
 
-export type DemoSession = { email: string; name: string; username?: string; role: Role };
+export type AppSession = { email: string; name: string; username?: string; role: Role };
 
 export const homeFor = (role: Role) => (role === "player" ? "/player" : "/organizer");
 
@@ -36,10 +36,10 @@ const authClient = createAuthClient();
 
 // ---------- session cache ----------
 
-let cachedSession: DemoSession | null = null;
+let cachedSession: AppSession | null = null;
 
 /** Narrow Better Auth's user payload to the fields the app cares about. */
-function toSession(user: unknown): DemoSession | null {
+function toSession(user: unknown): AppSession | null {
   if (!user || typeof user !== "object") return null;
   const u = user as Record<string, unknown>;
   if (typeof u.email !== "string") return null;
@@ -56,12 +56,12 @@ function toSession(user: unknown): DemoSession | null {
  * before the first refreshSession()/useSession() — callers in event handlers
  * run after mount, by which point the cache is warm.
  */
-export function getSession(): DemoSession | null {
+export function getSession(): AppSession | null {
   return cachedSession;
 }
 
 /** Fetches the server session into the cache and notifies listeners. */
-export async function refreshSession(): Promise<DemoSession | null> {
+export async function refreshSession(): Promise<AppSession | null> {
   const { data } = await authClient.getSession();
   const next = toSession(data?.user);
   const changed = next?.email !== cachedSession?.email || next?.role !== cachedSession?.role;
@@ -77,8 +77,8 @@ export async function refreshSession(): Promise<DemoSession | null> {
  * part of the app broadcasts a change (sign-out from the header) and on
  * focus, which covers signing out in another tab.
  */
-export function useSession(): DemoSession | null {
-  const [session, setSession] = useState<DemoSession | null>(cachedSession);
+export function useSession(): AppSession | null {
+  const [session, setSession] = useState<AppSession | null>(cachedSession);
 
   const sync = useCallback(() => {
     void refreshSession().then(setSession);
@@ -151,11 +151,11 @@ export async function signOut(): Promise<void> {
 }
 
 /**
- * Google sign-in stays a stub — OAuth needs client IDs and callback URLs that
- * do not exist yet. Kept so the button on both auth screens keeps working.
+ * Google sign-in is not wired up yet — OAuth needs client IDs and callback URLs
+ * configured in Better Auth. The Google button is hidden until this is set up.
  */
 export async function signInWithGoogle(): Promise<{ message: string }> {
-  return { message: "Google sign-in would start here (demo)." };
+  return { message: "Google sign-in is not configured yet." };
 }
 
 // ---------- errors ----------

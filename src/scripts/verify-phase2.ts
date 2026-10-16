@@ -2,7 +2,7 @@
  * Phase 2 verification: exercises the real auth HTTP flow against a running
  * dev server (`npm run dev` on port 3000) backed by the Pi database.
  *
- * Covers: sign-in with the seeded demo accounts, session read-through,
+ * Covers: sign-in with the seeded fixture accounts, session read-through,
  * sign-up (player + organizer), duplicate rejection, and the middleware
  * redirect for signed-out workspace visits.
  *
@@ -114,7 +114,7 @@ async function main() {
   // --- 1. seeded player signs in ---
   const playerJar: CookieJar = new Map();
   const playerIn = await signIn(`player@example.com`, DEMO_PASSWORD, playerJar);
-  record("demo player sign-in ok", playerIn.response.ok, playerIn.body);
+  record("fixture player sign-in ok", playerIn.response.ok, playerIn.body);
 
   const playerSession = await getSession(playerJar);
   const playerUser = (playerSession.body?.user ?? null) as Record<string, unknown> | null;
@@ -127,7 +127,7 @@ async function main() {
   // --- 2. seeded organizer signs in ---
   const orgJar: CookieJar = new Map();
   const orgIn = await signIn("organizer@example.com", DEMO_PASSWORD, orgJar);
-  record("demo organizer sign-in ok", orgIn.response.ok, orgIn.body);
+  record("fixture organizer sign-in ok", orgIn.response.ok, orgIn.body);
 
   const orgSession = await getSession(orgJar);
   const orgUser = (orgSession.body?.user ?? null) as Record<string, unknown> | null;

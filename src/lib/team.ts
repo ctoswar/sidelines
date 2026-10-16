@@ -1,4 +1,4 @@
-// Team profile API client — the last of the nine `sidelines.demo.*` stores.
+// Team profile API client — replaces the old `sidelines.demo.team` localStorage store.
 //
 // The profile lives on /api/team; the uploaded banner is a separate multipart
 // endpoint (like the Phase 3 photo) and arrives as a stored path the client

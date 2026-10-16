@@ -17,7 +17,6 @@ import {
 import { homeFor, signUp } from "@/lib/auth";
 import { uploadProfilePicture } from "@/lib/player-profile";
 import { Field } from "./field";
-import { GoogleButton } from "./google-button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { AnimatedSelect } from "@/components/dashboard/animated-select";
 
@@ -181,7 +180,6 @@ export function PlayerSignupForm({ redirectTo }: { redirectTo?: string }) {
 
   return (
     <>
-      <GoogleButton onResult={setMessage} />
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="signup-profile-form">
         <div className="signup-profile-preview" style={{ "--profile-accent": profileColor } as CSSProperties}>
           <div className="signup-profile-orbit" aria-hidden="true" />

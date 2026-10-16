@@ -46,7 +46,7 @@ export async function loadTeamRow(userId: string): Promise<TeamRow | null> {
 }
 
 /**
- * The demo team's roster (Phase 7), by shirt number — a real roster sheet
+ * The seeded team's roster (Phase 7), by shirt number — a real roster sheet
  * lists players by number, and the seed has no column that could express the
  * old array's authoring order. `position` is free text in the schema; seed
  * only ever writes "Singles"/"Doubles", the two values the type speaks.
