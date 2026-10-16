@@ -14,6 +14,7 @@
 import { randomBytes } from "node:crypto";
 import { eq, or } from "drizzle-orm";
 import { db } from "@/server/db";
+import { publish } from "@/server/realtime";
 import * as t from "@/server/schema";
 
 export type ScoreRole = "scorer" | "umpire";
@@ -85,6 +86,7 @@ export async function saveCrewNames(
     .insert(t.gameCrew)
     .values({ gameId, ...names })
     .onConflictDoUpdate({ target: t.gameCrew.gameId, set: names });
+  publish("crew");
   return names;
 }
 
@@ -100,6 +102,7 @@ export async function mintGameTokens(
     .insert(t.gameCrew)
     .values({ gameId, ...names, ...tokens })
     .onConflictDoUpdate({ target: t.gameCrew.gameId, set: { ...names, ...tokens } });
+  publish("crew");
   return tokens;
 }
 
@@ -123,6 +126,7 @@ export async function writeGameResult(
       });
     await tx.update(t.games).set({ score, status: "final" }).where(eq(t.games.id, gameId));
   });
+  publish("results");
   return { score, completedAt: completedAt.toISOString() };
 }
 

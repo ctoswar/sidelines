@@ -1,25 +1,33 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { cache } from "react";
 import { EventShell } from "@/components/events/event-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { events, getEvent } from "@/lib/events-data";
-import { getEventDetail } from "@/lib/event-detail";
+import { loadEventDetail } from "@/server/events";
 
-export function generateStaticParams() {
-  return events.map((e) => ({ slug: e.slug }));
-}
+// Phase 6: the page renders from Postgres per request (the same loadEventDetail
+// the API serves) instead of the static modules it was prerendered from. No
+// generateStaticParams - the build never touches the database, and every page
+// view sees live registration counts and announcements. cache() dedupes the
+// metadata and body reads into one query per request.
+const detailFor = cache(loadEventDetail);
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const e = getEvent(slug);
-  return { title: e ? `${e.name} – Sidelines` : "Event – Sidelines" };
+  const detail = await detailFor(slug);
+  // notFound() here (not in the body) so the response status is a real 404 -
+  // a streamed dynamic body has already flushed 200 by the time it throws.
+  if (!detail) notFound();
+  return { title: `${detail.event.name} – Sidelines` };
 }
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const detail = getEventDetail(slug);
+  const detail = await detailFor(slug);
   if (!detail) notFound();
 
   return (

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/dashboard/use-toast";
 import { fetchRegistrationState, removeRegistration, type Registration } from "@/lib/registrations";
 import { createAnnouncement, deleteAnnouncement, fetchAnnouncements, type Announcement } from "@/lib/announcements";
+import { useLiveSubscription } from "@/lib/realtime";
 import type { EventDetail } from "@/lib/event-detail";
 
 const day = (iso: string) => {
@@ -42,6 +43,10 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
   }, [slug]);
 
   useEffect(() => refresh(), [refresh]);
+
+  // Another tab publishing an announcement or a teammate registering lands
+  // here; polling is the fallback when the stream is unavailable.
+  useLiveSubscription(["announcements", "registrations"], refresh);
 
   const publish = async (e: React.FormEvent) => {
     e.preventDefault();

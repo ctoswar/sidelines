@@ -12,6 +12,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
+import { publish } from "@/server/realtime";
 import { eventExists } from "@/server/events";
 import { announcementSchema } from "@/lib/validators/events";
 
@@ -81,5 +82,6 @@ export async function POST(request: Request) {
       at: t.announcements.at,
     });
 
+  publish("announcements");
   return NextResponse.json({ announcement: row });
 }

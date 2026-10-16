@@ -1,11 +1,11 @@
 // Event reads over Postgres.
 //
 // The catalogue (`events`) and the generated aggregate (`event_details`) are
-// seeded from the same static modules the pages render from, so this mapper
-// is the bridge between the two worlds: API consumers read the DB copy,
-// pages keep their static reads (they are prerendered at build, where no
-// database is reachable — see src/server/db.ts). verify-phase4.ts asserts
-// the two representations stay identical.
+// seeded from the same static modules the pages used to render from, so this
+// mapper is the bridge between the two worlds: API consumers and the event
+// pages both read the DB copy (Phase 6), while src/lib/event-detail.ts stays
+// as the seed source and the type home. verify-phase4.ts asserts the two
+// representations stay identical.
 
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";

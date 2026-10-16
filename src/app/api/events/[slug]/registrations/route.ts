@@ -18,6 +18,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
+import { publish } from "@/server/realtime";
 import { eventExists } from "@/server/events";
 
 /** Rows with the registrant's account role joined — the hub's Role column. */
@@ -101,6 +102,8 @@ export async function POST(
       .onConflictDoNothing({
         target: [t.registrations.eventSlug, t.registrations.email],
       });
+    // A refresh signal, not data: every viewer refetches the count they need.
+    publish("registrations");
   }
 
   return NextResponse.json({ count: await countFor(slug), registered: true });
@@ -121,5 +124,6 @@ export async function DELETE(
     .delete(t.registrations)
     .where(and(eq(t.registrations.eventSlug, slug), eq(t.registrations.userId, user.id)));
 
+  publish("registrations");
   return NextResponse.json({ count: await countFor(slug), registered: false });
 }

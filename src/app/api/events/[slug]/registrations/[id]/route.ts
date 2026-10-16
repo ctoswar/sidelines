@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
+import { publish } from "@/server/realtime";
 import { eventExists } from "@/server/events";
 
 export async function DELETE(
@@ -32,5 +33,6 @@ export async function DELETE(
   if (deleted.length === 0) {
     return NextResponse.json({ message: "Registration not found." }, { status: 404 });
   }
+  publish("registrations");
   return NextResponse.json({ ok: true });
 }
