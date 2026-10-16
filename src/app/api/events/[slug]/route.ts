@@ -2,10 +2,10 @@
 //
 //   GET /api/events/[slug] — the full EventDetail aggregate from the DB.
 //
-// Serves the copy seeded into `event_details`, which the harness verifies is
-// identical to what the (statically prerendered) event pages render. Pages
-// still read the static modules — they build without a database — so this
-// route is the DB-backed surface consumers migrate onto.
+// Serves the copy seeded into `event_details`; since Phase 6 this is the same
+// loadEventDetail the event pages render from, so the API and the page can
+// never disagree. The harness still verifies the DB copy against the static
+// modules the seed loads from.
 
 import { NextResponse } from "next/server";
 import { loadEventDetail } from "@/server/events";

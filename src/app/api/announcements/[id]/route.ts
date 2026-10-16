@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
+import { publish } from "@/server/realtime";
 
 export async function DELETE(
   _request: Request,
@@ -28,5 +29,6 @@ export async function DELETE(
   if (deleted.length === 0) {
     return NextResponse.json({ message: "Announcement not found." }, { status: 404 });
   }
+  publish("announcements");
   return NextResponse.json({ ok: true });
 }

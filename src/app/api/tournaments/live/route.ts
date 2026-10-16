@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
+import { publish } from "@/server/realtime";
 import { scheduleStartSchema } from "@/lib/validators/tournaments";
 
 async function organizerOrError() {
@@ -75,5 +76,6 @@ export async function PUT(request: Request) {
     .returning();
   if (!updated) return NextResponse.json({ message: "No live tournament to configure." }, { status: 404 });
 
+  publish("schedule");
   return NextResponse.json({ tournament: toTournamentWire(updated) });
 }

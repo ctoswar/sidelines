@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { EventDetail } from "@/lib/event-detail";
@@ -10,6 +10,7 @@ import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
 import { AUTH_CHANGED_EVENT, refreshSession } from "@/lib/auth";
 import { fetchRegistrationState, registerForEvent, unregisterFromEvent } from "@/lib/registrations";
+import { useLiveSubscription } from "@/lib/realtime";
 import * as S from "./event-sections";
 
 const TABS = [
@@ -37,30 +38,38 @@ export function EventShell({ d }: { d: EventDetail }) {
   }, []);
 
   // The public header can sign you out without this page being replaced, so
-  // re-read the session when it changes — and on focus, which covers signing
+  // re-read the session when it changes - and on focus, which covers signing
   // out in another tab. The badge itself is server state now: after every
   // session change we re-fetch the registration, and a signed-out visitor
-  // simply gets registered:false.
+  // simply gets registered:false. The realtime `registrations` frame (someone
+  // else registering) triggers the same refetch from the stream.
+  const mounted = useRef(true);
+  useEffect(() => () => { mounted.current = false; }, []);
+
+  const syncRegistration = useCallback(async () => {
+    try {
+      const state = await fetchRegistrationState(e.slug);
+      if (mounted.current) setRegistered(state.registered);
+    } catch {
+      /* signed out or offline - leave the badge off */
+    }
+  }, [e.slug]);
+
   useEffect(() => {
-    let alive = true;
     const sync = async () => {
       await refreshSession();
-      try {
-        const state = await fetchRegistrationState(e.slug);
-        if (alive) setRegistered(state.registered);
-      } catch {
-        /* signed out or offline — leave the badge off */
-      }
+      await syncRegistration();
     };
     void sync();
     window.addEventListener(AUTH_CHANGED_EVENT, sync);
     window.addEventListener("focus", sync);
     return () => {
-      alive = false;
       window.removeEventListener(AUTH_CHANGED_EVENT, sync);
       window.removeEventListener("focus", sync);
     };
-  }, [e.slug]);
+  }, [syncRegistration]);
+
+  useLiveSubscription(["registrations"], syncRegistration);
 
   useEffect(() => {
     const nodes = [...document.querySelectorAll<HTMLElement>(".event-detail-page .event-reveal")];

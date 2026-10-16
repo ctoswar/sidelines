@@ -12,6 +12,7 @@ import { applyScheduleStartTime, DEFAULT_START_TIME } from "@/lib/schedule-confi
 import { applyGameResults, fetchGameResults, subscribeToGameResults, type GameResults } from "@/lib/game-results";
 import { fetchGameCrew, subscribeToGameCrew, type GameCrewMap } from "@/lib/game-crew";
 import { fetchLiveTournament } from "@/lib/tournaments";
+import { useLiveSubscription } from "@/lib/realtime";
 
 const pill = (active: boolean) =>
   `rounded-full border px-3.5 py-1.5 text-sm font-bold transition-colors ${
@@ -58,6 +59,19 @@ export default function SchedulePage() {
     refreshCrew();
     return subscribeToGameCrew(refreshCrew);
   }, []);
+
+  // Realtime from other devices: a scorer submitting a result, a crew save,
+  // or a schedule-start change anywhere pushes the matching refetch here.
+  // Polling is the fallback when the stream is unavailable.
+  useLiveSubscription(["results", "crew", "schedule"], (topic) => {
+    if (topic === "results") void fetchGameResults().then(setResults).catch(() => {});
+    if (topic === "crew") void fetchGameCrew().then(setCrew).catch(() => {});
+    if (topic === "schedule") {
+      void fetchLiveTournament()
+        .then((t) => setStartTime(t.scheduleStart))
+        .catch(() => {});
+    }
+  });
 
   const base = applyScheduleStartTime(games, startTime);
   const schedule = applyGameResults(base, results);

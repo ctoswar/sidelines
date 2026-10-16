@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getEvent } from "@/lib/events-data";
 import { fetchAnnouncements, type Announcement } from "@/lib/announcements";
+import { useLiveSubscription } from "@/lib/realtime";
 
 const when = (iso: string) => {
   const d = new Date(iso);
@@ -13,13 +14,18 @@ const when = (iso: string) => {
 export function AnnouncementsFeed() {
   const [items, setItems] = useState<Announcement[]>([]);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     let alive = true;
     fetchAnnouncements({ limit: 3 })
       .then((rows) => { if (alive) setItems(rows); })
-      .catch(() => { /* feed is non-critical — keep the fallback */ });
+      .catch(() => { /* feed is non-critical - keep the fallback */ });
     return () => { alive = false; };
   }, []);
+
+  useEffect(() => refresh(), [refresh]);
+
+  // A publish anywhere pushes the newest rows here; polling covers broken SSE.
+  useLiveSubscription(["announcements"], refresh);
 
   if (items.length === 0) {
     return (
