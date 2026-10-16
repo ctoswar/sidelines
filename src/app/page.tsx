@@ -17,7 +17,7 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-6xl px-5 pb-20 sm:px-8">
           <section className="events-hero">
             <div>
-              <p className="events-eyebrow"><span />The global event desk <b>///</b> Season 26—27</p>
+              <p className="events-eyebrow"><span />The global event desk <b>{"///"}</b> Season 26—27</p>
               <h1>Find your next<br /><em>court.</em></h1>
               <p className="events-hero-copy">Every pickleball tournament, league and live score in one place. Follow the matches that make the journey worth it.</p>
             </div>

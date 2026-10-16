@@ -18,7 +18,7 @@
  *         npx tsx src/scripts/verify-phase4.ts
  */
 
-import { getEventDetail } from "../lib/event-detail";
+import { getEventDetail, type EventDetail } from "../lib/event-detail";
 import { keepers } from "../lib/mock-data";
 
 const BASE = process.env.APP_URL ?? "http://localhost:3000";
@@ -116,10 +116,10 @@ async function main() {
 
   // --- 2. DB detail is identical to what the static pages render ---
   const detailRes = await api(null, "GET", `/api/events/${SLUG}`);
-  const detailBody = (await detailRes.json().catch(() => null)) as { detail?: Record<string, any> } | null;
+  const detailBody = (await detailRes.json().catch(() => null)) as { detail?: EventDetail } | null;
   const db = detailBody?.detail;
   const stat = getEventDetail(SLUG);
-  const lengths = (d: Record<string, any> | undefined) =>
+  const lengths = (d: EventDetail | null | undefined) =>
     d &&
     [
       d.teams?.length,
@@ -144,8 +144,8 @@ async function main() {
       db?.tz?.label === stat.tz.label &&
       db?.days === stat.days &&
       db?.fields === stat.fields &&
-      lengths(db) === lengths(stat as unknown as Record<string, any>),
-    { db: lengths(db), static: lengths(stat as unknown as Record<string, any>) },
+      lengths(db) === lengths(stat),
+    { db: lengths(db), static: lengths(stat) },
   );
 
   // --- 3. unknown slug is a 404 ---

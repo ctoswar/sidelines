@@ -47,7 +47,11 @@ export default function SchedulePage() {
         .then((next) => { if (alive) setResults(next); })
         .catch(() => { /* schedule still renders with the seeded scores */ });
     refreshResults();
-    return subscribeToGameResults(refreshResults);
+    const stopTab = subscribeToGameResults(refreshResults);
+    return () => {
+      alive = false;
+      stopTab();
+    };
   }, []);
 
   useEffect(() => {
@@ -57,7 +61,11 @@ export default function SchedulePage() {
         .then((next) => { if (alive) setCrew(next); })
         .catch(() => { /* crew modal shows "Not assigned" */ });
     refreshCrew();
-    return subscribeToGameCrew(refreshCrew);
+    const stopTab = subscribeToGameCrew(refreshCrew);
+    return () => {
+      alive = false;
+      stopTab();
+    };
   }, []);
 
   // Realtime from other devices: a scorer submitting a result, a crew save,
