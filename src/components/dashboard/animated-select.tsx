@@ -31,7 +31,9 @@ export function AnimatedSelect({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
+  // -1 when nothing is chosen yet — the trigger shows the placeholder
+  // rather than pretending the first option is selected.
+  const selectedIndex = options.findIndex((option) => option.value === value);
 
   const isDisabled = (index: number) => options[index]?.disabled === true;
   const firstAvailableIndex = () => options.findIndex((option) => !option.disabled);
@@ -42,7 +44,9 @@ export function AnimatedSelect({
       const roomBelow = window.innerHeight - rect.bottom;
       setPlacement(roomBelow < 220 && rect.top > roomBelow ? "up" : "down");
     }
-    setActiveIndex(isDisabled(selectedIndex) ? firstAvailableIndex() : selectedIndex);
+    setActiveIndex(
+      selectedIndex >= 0 && !isDisabled(selectedIndex) ? selectedIndex : firstAvailableIndex(),
+    );
     setOpen(true);
   };
 
@@ -130,7 +134,7 @@ export function AnimatedSelect({
     }
   };
 
-  const selected = options[selectedIndex];
+  const selected = selectedIndex >= 0 ? options[selectedIndex] : undefined;
 
   return (
     <div ref={rootRef} className={`game-select ${className}`}>
@@ -146,7 +150,7 @@ export function AnimatedSelect({
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={handleTriggerKeyDown}
       >
-        <span>{selected?.label ?? "Select…"}</span>
+        <span className={selected ? "" : "text-muted"}>{selected?.label ?? "Select…"}</span>
         <span className="game-select-chevron" aria-hidden="true">⌄</span>
       </button>
 

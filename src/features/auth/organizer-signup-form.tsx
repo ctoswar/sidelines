@@ -14,7 +14,7 @@ import { LoadingDots } from "@/components/ui/loading-dots";
 export function OrganizerSignupForm() {
   const router = useRouter();
   const [message, setMessage] = useState("");
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<OrganizerSignupInput>({
+  const { register, control, handleSubmit, formState: { errors, isSubmitting } } = useForm<OrganizerSignupInput>({
     resolver: zodResolver(organizerSignupSchema),
     defaultValues: { terms: false },
   });
@@ -37,9 +37,9 @@ export function OrganizerSignupForm() {
         <hr className="border-line" />
         <p className="font-bold">Organization details</p>
         <Field label="Organization name" placeholder="Harbor Pickleball" error={errors.org?.message} {...register("org")} />
-        <SelectField label="Organization type" options={orgTypes} error={errors.orgType?.message} {...register("orgType")} />
+        <SelectField label="Organization type" options={orgTypes} error={errors.orgType?.message} control={control} name="orgType" />
         <Field label="Your role" placeholder="Tournament director" error={errors.title?.message} {...register("title")} />
-        <SelectField label="Tournaments you run per year" options={volumes} error={errors.volume?.message} {...register("volume")} />
+        <SelectField label="Tournaments you run per year" options={volumes} error={errors.volume?.message} control={control} name="volume" />
         <Field label="City and country" placeholder="Manila, Philippines" error={errors.city?.message} {...register("city")} />
         <Field label="Website or social page (optional)" placeholder="https://" {...register("site")} />
         <div>
