@@ -8,7 +8,6 @@ import { organizerSignupSchema, orgTypes, volumes, type OrganizerSignupInput } f
 import { homeFor, signUp } from "@/lib/auth";
 import { Field } from "./field";
 import { SelectField } from "./select-field";
-import { GoogleButton } from "./google-button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 
 export function OrganizerSignupForm() {
@@ -27,7 +26,6 @@ export function OrganizerSignupForm() {
 
   return (
     <>
-      <GoogleButton onResult={setMessage} />
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <Field label="Username" placeholder="e.g. harbor.director" autoComplete="username" spellCheck={false} autoCapitalize="none" error={errors.username?.message} {...register("username")} />
         <Field label="Full name" autoComplete="name" error={errors.name?.message} {...register("name")} />

@@ -8,10 +8,10 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, readUserFlags, type AppRole } from "./auth";
-import type { DemoSession } from "@/lib/auth";
+import type { AppSession } from "@/lib/auth";
 
 /** Full server-side identity, including the id the client never sees. */
-export type SessionUser = DemoSession & { id: string };
+export type SessionUser = AppSession & { id: string };
 
 /**
  * Loads the signed-in user for the current request, including their id.
@@ -34,7 +34,7 @@ export const getServerSessionUser = cache(async (): Promise<SessionUser | null> 
 });
 
 /** Same lookup, without the id — what the client-shaped consumers expect. */
-export const getServerSession = cache(async (): Promise<DemoSession | null> => {
+export const getServerSession = cache(async (): Promise<AppSession | null> => {
   const user = await getServerSessionUser();
   if (!user) return null;
   const { id: _id, ...rest } = user;
@@ -49,7 +49,7 @@ export const getServerSession = cache(async (): Promise<DemoSession | null> => {
  * cookie exists — it runs on the edge and cannot reach the database — so a
  * stray or forged cookie is caught here instead, before the workspace renders.
  */
-export async function requireRole(role: AppRole): Promise<DemoSession> {
+export async function requireRole(role: AppRole): Promise<AppSession> {
   const session = await getServerSession();
 
   if (!session) redirect(`/login?next=/${role}`);

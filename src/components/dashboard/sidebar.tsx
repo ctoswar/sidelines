@@ -47,7 +47,7 @@ export function Sidebar({ items, roleLabel, footer }: { items: NavItem[]; roleLa
         <p className="mb-2 text-xs uppercase tracking-wider">Signed in as</p>
         {/* `footer` is the workspace context (team name or org) — a node, so the
             player workspace can hand over a live team name. The person is
-            whoever actually signed in, not a hard-coded demo name. */}
+            whoever actually signed in, not a hard-coded name. */}
         <strong className="block text-fg">
           {session && <>{session.name} · </>}
           {footer}

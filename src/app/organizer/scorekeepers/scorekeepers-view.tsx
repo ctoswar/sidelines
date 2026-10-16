@@ -32,7 +32,7 @@ const EMPTY_CREW: GameCrew = { scorekeeper: "", umpire: "" };
 export function ScorekeepersView({ games }: { games: Game[] }) {
   const { show, node } = useToast();
   // Open on the first game of the schedule — the seeded first slot (g1) is
-  // also the demo crew's game, matching the old `keepers`-first default.
+  // also the crew's game, matching the old `keepers`-first default.
   const defaultGameId = games[0]?.id ?? "";
   const [schedule, setSchedule] = useState(games);
   const [crew, setCrew] = useState<Record<string, GameCrew>>({});

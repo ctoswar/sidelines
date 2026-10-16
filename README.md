@@ -12,7 +12,7 @@ Point `.env` at any PostgreSQL database (a Raspberry Pi, a container, or a hoste
 cp .env.example .env   # fill in DATABASE_URL, BETTER_AUTH_SECRET, UPLOAD_DIR
 npm install
 npm run db:migrate
-npm run db:seed        # demo accounts and content
+npm run db:seed        # production-safe: verifies the database is empty
 npm run dev
 ```
 
@@ -28,7 +28,7 @@ npx tsc --noEmit
 
 The build is database-free: every page that reads data renders per request (`force-dynamic`), so it succeeds with no reachable database.
 
-Per-phase verification harnesses exercise each vertical against a running server (`npm run start`) with a seeded database — SSR markers, mutation proofs (flip a row, watch the page follow, restore), and API contracts:
+Per-phase verification harnesses exercise each vertical against a running server (`npm run start`) with a database seeded by `npm run db:seed:demo` — SSR markers, mutation proofs (flip a row, watch the page follow, restore), and API contracts:
 
 ```bash
 npx tsx src/scripts/verify-phase7.ts   # also verify-phase1 … verify-phase6
@@ -43,7 +43,7 @@ the same file builds on x86 machines and on the Raspberry Pi.
 ```bash
 cp .env.example .env   # fill in DATABASE_URL, BETTER_AUTH_SECRET, UPLOAD_DIR
 npm run db:migrate     # from a dev machine, against the target database
-npm run db:seed        # optional: demo data
+npm run db:seed        # production-safe: no fixtures are inserted
 docker compose up -d app
 ```
 
@@ -126,14 +126,16 @@ Uploads (profile photos, team banners) are files on disk under `UPLOAD_DIR`, bin
 
 Realtime updates (results, crew saves, schedule changes, registrations, announcements) flow over an in-process SSE bus with an automatic polling fallback; see `src/server/realtime.ts`.
 
-## Demo accounts
+## Development fixtures
 
-`npm run db:seed` creates two accounts with the password `sidelines-demo`:
+`npm run db:seed:demo` loads sample accounts, an organization, events, and a schedule so local development and the verification harnesses have data to work with. The fixtures use the password `sidelines-demo`:
 
 - `player@example.com` — player workspace
 - `organizer@example.com` — organizer workspace
 
-Any other account uses the role chosen at signup. Google sign-in is a stub; email/password is the working path.
+For production, `npm run db:seed` is intentionally a no-op: organizers and players create real accounts and content through the UI. To remove previously seeded demo rows from a database, run `npm run db:clean:demo`.
+
+Email/password is the working sign-in path. Google sign-in is not configured yet.
 
 ## Repository map
 
@@ -141,7 +143,9 @@ Any other account uses the role chosen at signup. Google sign-in is a stub; emai
 - `src/app/api/` — route handlers for auth (Better Auth), events, registrations, announcements, scoring, team profiles, tournaments, and the realtime stream
 - `src/server/realtime.ts` + `/api/stream` — the SSE bus; `src/lib/realtime.ts` is the client subscription with polling fallback
 - `src/lib/mock-data.ts`, `src/lib/events-data.ts`, `src/lib/event-detail.ts` — seed sources and type homes; no page reads them at runtime
-- `src/scripts/seed.ts` — loads those modules into the database
+- `src/scripts/seed.ts` — production-safe seed (no fixtures inserted)
+- `src/scripts/seed-demo.ts` — development fixtures
+- `src/scripts/clean-demo-data.ts` — removes seeded demo rows from a database
 - `src/scripts/verify-phase*.ts` — per-phase verification harnesses
 
 ## Event data
