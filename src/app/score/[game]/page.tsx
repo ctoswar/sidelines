@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ScorePanel } from "@/components/dashboard/score-panel";
-import { games } from "@/lib/mock-data";
 import { divisionLabel } from "@/lib/divisions";
 import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime } from "@/lib/schedule-config";
 import { resolveScoreGrant } from "@/server/score";
+import { loadGames } from "@/server/schedule";
 
 // Public, no-account scoring route — opened by scanning a scorekeeper QR
 // code. The link carries only a capability token minted by the organizer;
 // the person's name and role are resolved server-side from `game_crew`, so
 // editing the URL buys nothing: an unknown, rotated, or wrong-game token
 // gets the "link is not valid" screen and no scoring panel.
+export const dynamic = "force-dynamic";
+
 export default async function PublicScorePage({
   params,
   searchParams,
@@ -21,6 +23,7 @@ export default async function PublicScorePage({
 }) {
   const { game } = await params;
   const { t, scheduleStart } = await searchParams;
+  const games = await loadGames();
   const schedule = applyScheduleStartTime(games, scheduleStart ?? "09:00");
   const g = schedule.find((x) => x.id === game);
   if (!g) notFound();

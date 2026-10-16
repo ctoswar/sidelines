@@ -7,10 +7,10 @@
 // as the seed source and the type home. verify-phase4.ts asserts the two
 // representations stay identical.
 
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
-import type { EventItem } from "@/types";
+import type { EventItem, OpenTournament } from "@/types";
 import type {
   Crew,
   EventDetail,
@@ -20,6 +20,30 @@ import type {
   PoolRow,
   TeamInfo,
 } from "@/lib/event-detail";
+
+/**
+ * The `events` columns as the EventItem wire shape, for API routes that join
+ * events into another table's rows (registrations, announcements). Same
+ * mapping as eventRowToItem, expressed as a drizzle selection instead of a
+ * row transform.
+ */
+export const eventSelection = {
+  slug: t.events.slug,
+  name: t.events.name,
+  start: t.events.startDate,
+  end: t.events.endDate,
+  city: t.events.city,
+  country: t.events.country,
+  code: t.events.code,
+  tags: t.events.tags,
+  status: t.events.status,
+  featured: t.events.featured,
+  live: t.events.live,
+  teams: t.events.teamCount,
+  color: t.events.color,
+  monogram: t.events.monogram,
+  hasLogo: t.events.hasLogo,
+} as const;
 
 /** `events` row → the EventItem shape every consumer already speaks. */
 export function eventRowToItem(row: typeof t.events.$inferSelect): EventItem {
@@ -95,6 +119,40 @@ export async function loadCatalogue() {
   return eventRows.map((row) => ({
     ...eventRowToItem(row),
     registrationCount: countBySlug.get(row.slug) ?? 0,
+  }));
+}
+
+/** One event as the wire EventItem, or null when the slug is unknown. */
+export async function loadEvent(slug: string): Promise<EventItem | null> {
+  const [row] = await db.select().from(t.events).where(eq(t.events.slug, slug)).limit(1);
+  return row ? eventRowToItem(row) : null;
+}
+
+/**
+ * Player-facing "find tournaments" listings, soonest event first. The id is
+ * the name slugified (seed logic), the FK points at the event the card's
+ * "View & register" button opens.
+ */
+export async function loadOpenTournaments(): Promise<OpenTournament[]> {
+  const rows = await db
+    .select({
+      name: t.openTournaments.name,
+      meta: t.openTournaments.meta,
+      fee: t.openTournaments.fee,
+      spots: t.openTournaments.spots,
+      slug: t.openTournaments.eventSlug,
+      startDate: t.events.startDate,
+    })
+    .from(t.openTournaments)
+    .leftJoin(t.events, eq(t.openTournaments.eventSlug, t.events.slug))
+    // ASC puts NULLs last: listings without an event follow the dated ones.
+    .orderBy(asc(t.events.startDate));
+  return rows.map((row) => ({
+    name: row.name,
+    meta: row.meta,
+    fee: row.fee,
+    spots: row.spots,
+    slug: row.slug ?? undefined,
   }));
 }
 

@@ -1,11 +1,14 @@
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TeamName } from "@/components/dashboard/team-name";
 import { StatusBadge } from "@/components/dashboard/status-badge";
-import { games, MY_TEAM } from "@/lib/mock-data";
+import { MY_TEAM } from "@/lib/mock-data";
+import { loadGames } from "@/server/schedule";
 
 export const metadata = { title: "My schedule – Sidelines" };
+export const dynamic = "force-dynamic";
 
-export default function PlayerSchedulePage() {
+export default async function PlayerSchedulePage() {
+  const games = await loadGames();
   const mine = games.filter((g) => g.teamA === MY_TEAM || g.teamB === MY_TEAM);
   return (
     <>

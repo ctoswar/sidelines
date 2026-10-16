@@ -4,10 +4,11 @@
 // banner travels as a stored path (`bannerPath`), never a data URL, and the
 // client turns it into a cache-busted URL the same way Phase 3's photo works.
 
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { DEFAULT_TEAM } from "@/lib/team";
+import type { RosterPlayer } from "@/types";
 
 export type TeamRow = typeof t.teamProfiles.$inferSelect;
 
@@ -42,6 +43,24 @@ export async function loadTeamRow(userId: string): Promise<TeamRow | null> {
     .where(eq(t.teamProfiles.userId, userId))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * The demo team's roster (Phase 7), by shirt number — a real roster sheet
+ * lists players by number, and the seed has no column that could express the
+ * old array's authoring order. `position` is free text in the schema; seed
+ * only ever writes "Singles"/"Doubles", the two values the type speaks.
+ */
+export async function loadRoster(): Promise<RosterPlayer[]> {
+  const rows = await db
+    .select()
+    .from(t.rosterPlayers)
+    .orderBy(asc(t.rosterPlayers.number), asc(t.rosterPlayers.name));
+  return rows.map((row) => ({
+    name: row.name,
+    number: row.number,
+    position: row.position as RosterPlayer["position"],
+  }));
 }
 
 /**

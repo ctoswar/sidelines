@@ -1,11 +1,16 @@
 import { EventsBrowser } from "@/components/events/events-browser";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { events } from "@/lib/events-data";
+import { loadCatalogue } from "@/server/events";
 
 export const metadata = { title: "Sidelines – Pickleball events, live scores and results" };
 
-export default function HomePage() {
+// The catalogue is a DB read now (Phase 7), so the landing page renders per
+// request — which also keeps `next build` free of any database.
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const events = await loadCatalogue();
   const liveCount = events.filter((event) => event.live).length;
   const countryCount = new Set(events.map((event) => event.country)).size;
 

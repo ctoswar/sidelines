@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
-import { openTournaments } from "@/lib/mock-data";
+import type { OpenTournament } from "@/types";
 
-export function TournamentsView() {
+/** The listings — loaded by the server page (Phase 7 DB swap). */
+export function TournamentsView({ tournaments }: { tournaments: OpenTournament[] }) {
   const { show, node } = useToast();
   return (
     <>
       <PageHeader title="Find tournaments" subtitle="Open for registration near you" />
       <div className="divide-y divide-line rounded-lg border border-line bg-card">
-        {openTournaments.map((t) => (
+        {tournaments.map((t) => (
           <div key={t.name} className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <p className="font-bold">{t.name}</p>

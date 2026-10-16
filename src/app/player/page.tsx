@@ -3,11 +3,14 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { TeamName } from "@/components/dashboard/team-name";
 import { AnnouncementsFeed } from "@/components/dashboard/announcements-feed";
-import { games, MY_TEAM } from "@/lib/mock-data";
+import { MY_TEAM } from "@/lib/mock-data";
+import { loadGames } from "@/server/schedule";
 
 export const metadata = { title: "Home – Sidelines" };
+export const dynamic = "force-dynamic";
 
-export default function PlayerHome() {
+export default async function PlayerHome() {
+  const games = await loadGames();
   const mine = games.filter((g) => g.teamA === MY_TEAM || g.teamB === MY_TEAM);
   const live = mine.find((g) => g.status === "live");
   const next = mine.find((g) => g.status === "next");

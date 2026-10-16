@@ -7,6 +7,7 @@
 // in the player dashboard feed and the event hub.
 
 import { jsonRequest, parse } from "./api-client";
+import type { EventItem } from "@/types";
 
 export type Announcement = {
   id: string;
@@ -16,6 +17,8 @@ export type Announcement = {
   author: string;
   /** ISO timestamp. */
   at: string;
+  /** The joined event row, so feeds render its name without a lookup. */
+  event?: EventItem | null;
 };
 
 /** Latest announcements, newest first. Optionally filtered to one event. */
