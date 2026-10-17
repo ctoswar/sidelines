@@ -190,21 +190,36 @@ async function seedEvents() {
 }
 
 async function seedTournaments() {
-  // The live tournament owns the demo schedule; the rest are drafts.
+  // The live tournament owns the demo schedule; the rest are drafts. The live
+  // one is linked to the event it is published under, so the pool table's
+  // "pull from signups" finds that event's registrations.
+  const EVENT_SLUGS: Record<string, string> = {
+    [LIVE_TOURNAMENT_ID]: "harbor-spring-open",
+  };
+
   await db
     .insert(t.tournaments)
     .values(
-      tournaments.map((tr, i) => ({
-        id: i === 0 ? LIVE_TOURNAMENT_ID : `t-${slugify(tr.name)}`,
-        organizationId: DEMO_ORG_ID,
-        name: tr.name,
-        meta: tr.meta,
-        status: tr.status === "Live" ? ("live" as const) : ("draft" as const),
-      })),
+      tournaments.map((tr, i) => {
+        const id = i === 0 ? LIVE_TOURNAMENT_ID : `t-${slugify(tr.name)}`;
+        return {
+          id,
+          organizationId: DEMO_ORG_ID,
+          name: tr.name,
+          meta: tr.meta,
+          status: tr.status === "Live" ? ("live" as const) : ("draft" as const),
+          eventSlug: EVENT_SLUGS[id] ?? null,
+        };
+      }),
     )
     .onConflictDoUpdate({
       target: t.tournaments.id,
-      set: { name: sql`excluded.name`, meta: sql`excluded.meta`, status: sql`excluded.status` },
+      set: {
+        name: sql`excluded.name`,
+        meta: sql`excluded.meta`,
+        status: sql`excluded.status`,
+        eventSlug: sql`excluded.event_slug`,
+      },
     });
 
   await db

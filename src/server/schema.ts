@@ -220,6 +220,12 @@ export const tournaments = pgTable("tournaments", {
   status: tournamentStatusEnum("status").default("draft").notNull(),
   /** First slot of the schedule, "HH:MM" 24h — was the schedule-start localStorage key. */
   scheduleStart: text("schedule_start").default("09:00").notNull(),
+  /**
+   * The published event this tournament drives — the pool table reads its
+   * registrations to seed solo pickleball entrants (see src/server/pool.ts).
+   * Null while a draft has no public event yet.
+   */
+  eventSlug: text("event_slug").references(() => events.slug, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -231,7 +237,22 @@ export const tournamentTeams = pgTable("tournament_teams", {
   name: text("name").notNull(),
   pool: poolEnum("pool").notNull(),
   seed: integer("seed").notNull(),
-}, (t) => [uniqueIndex("tournament_teams_slot_idx").on(t.tournamentId, t.name)]);
+  /**
+   * Where this entrant came from. Pickleball players register solo, so an
+   * entrant is usually one player bridged from the event's registrations
+   * ("signups"); it can also be a manually added team or a CSV row. Tracked so
+   * re-running the bridge is idempotent and the table can show provenance.
+   */
+  source: text("source").default("manual").notNull(),
+  /**
+   * The registrant account this entrant was bridged from, when there is one.
+   * onDelete "set null" keeps the pool row if the account later goes away.
+   */
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+}, (t) => [
+  uniqueIndex("tournament_teams_slot_idx").on(t.tournamentId, t.name),
+  index("tournament_teams_user_idx").on(t.tournamentId, t.userId),
+]);
 
 export const games = pgTable("games", {
   id: text("id").primaryKey(),

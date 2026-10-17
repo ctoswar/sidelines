@@ -30,6 +30,41 @@ export const tournamentStatusSchema = z.object({
   }),
 });
 
+/**
+ * One pool-table entrant. Pickleball players register solo, so `name` is a
+ * player's name as often as a team's; either way it is one slot in a pool.
+ * `seed` is optional on the wire — the server continues the numbering when a
+ * caller (CSV import, the signups bridge) leaves it blank.
+ */
+export const teamEntrySchema = z.object({
+  name: z.string()
+    .trim()
+    .min(1, "Give the entrant a name.")
+    .max(60, "Keep the name under 60 characters."),
+  pool: z.enum(["A", "B"], {
+    errorMap: () => ({ message: "Pool must be A or B." }),
+  }),
+  seed: z.coerce.number()
+    .int("Use a whole-number seed.")
+    .min(1, "Seeds start at 1.")
+    .max(9999, "That is more seeds than a draw has room for.")
+    .optional(),
+});
+
+/** Bulk add — the shape both "Add team" and CSV import post. */
+export const teamImportSchema = z.object({
+  teams: z
+    .array(teamEntrySchema)
+    .min(1, "Add at least one entrant.")
+    .max(500, "Five hundred entrants is plenty for one import."),
+  /**
+   * How these entrants arrived, for the table's provenance badge. Defaults to
+   * "manual"; the CSV importer sends "csv". The server never accepts "signups"
+   * here — that source is only written by the registrations bridge.
+   */
+  source: z.enum(["manual", "csv"]).optional(),
+});
+
 export const tournamentCreateSchema = z
   .object({
     name: z.string()

@@ -85,7 +85,9 @@ export async function POST(request: Request) {
     if (!row) return null;
 
     // Publish the event in the same transaction: a live tournament is listed
-    // on the hub and the public site from the moment it exists.
+    // on the hub and the public site from the moment it exists. The published
+    // slug is written back onto the tournament row so the pool table can pull
+    // this event's registrations (see src/server/pool.ts).
     const event =
       row.status === "live"
         ? await publishTournamentEvent(tx, {
@@ -100,6 +102,14 @@ export async function POST(request: Request) {
             country,
           })
         : null;
+
+    if (event) {
+      await tx
+        .update(t.tournaments)
+        .set({ eventSlug: event.slug, updatedAt: new Date() })
+        .where(eq(t.tournaments.id, row.id));
+      row.eventSlug = event.slug;
+    }
 
     return { row, event };
   });
