@@ -5,7 +5,8 @@
 // uses, so a value the server accepts always shifts cleanly. The creation
 // schema covers what the new-tournament wizard actually stores: a name, the
 // date range, the optional courts/divisions that become the row's display
-// `meta` (the table has no date columns), and that first slot.
+// `meta` (the table has no date columns), the place the tournament is listed
+// under, and that first slot.
 
 import { z } from "zod";
 import { minutesFromTime } from "@/lib/schedule-config";
@@ -43,6 +44,11 @@ export const tournamentCreateSchema = z
       .max(64, "That is more courts than a day has hours for.")
       .optional(),
     divisions: z.array(z.string().trim().min(1)).max(6, "Six divisions is plenty.").optional(),
+    // The place a published event is listed under. Optional on the wire (an
+    // API caller falls back to the organization's city); the wizard asks for
+    // both, because the public card renders "City, Country".
+    city: z.string().trim().max(60, "Keep the city under 60 characters.").optional(),
+    country: z.string().trim().max(60, "Keep the country under 60 characters.").optional(),
     scheduleStart: scheduleStartSchema.shape.scheduleStart,
     status: tournamentStatusSchema.shape.status.optional(),
   })

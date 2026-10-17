@@ -113,6 +113,8 @@ export function InfoTab({ d, mode }: PM) {
 export function TeamsTab({ d }: P) {
   const [pool, setPool] = useState<"All" | "A" | "B">("All");
   const list = d.teams.filter((t) => pool === "All" || t.pool === pool);
+  if (d.teams.length === 0)
+    return <Empty title="No teams listed yet" body="Team lists land here as registrations come in." />;
   return (
     <div>
       <div className="mb-4 flex gap-2">
@@ -213,10 +215,19 @@ function Table({ rows, qualify = 0 }: { rows: PoolRow[]; qualify?: number }) {
 }
 
 export function PoolsTab({ d }: P) {
+  if (d.pools.A.length === 0 && d.pools.B.length === 0)
+    return <Empty title="Pools not drawn yet" body="Pool tables appear once the tournament has teams." />;
   return (
     <div className="space-y-6">
       {(["A", "B"] as const).map((p) => (
-        <section key={p}><H>Pool {p}</H><Table rows={d.pools[p]} qualify={2} /></section>
+        <section key={p}>
+          <H>Pool {p}</H>
+          {d.pools[p].length === 0 ? (
+            <Empty title="Pool not filled yet" body="Teams are still being placed." />
+          ) : (
+            <Table rows={d.pools[p]} qualify={2} />
+          )}
+        </section>
       ))}
       <p className="text-sm text-muted">Highlighted rows advance to the semifinals. Ties are broken by point difference, then points scored.</p>
     </div>
@@ -244,6 +255,10 @@ function BracketCard({ m, d, mode }: { m: MatchInfo; d: EventDetail; mode: TimeM
 }
 export function BracketTab({ d, mode }: PM) {
   const [sf1, sf2, third, final] = d.bracket;
+  // A tournament that has not drawn its bracket yet has nothing to line up;
+  // the seeded events always carry all four cards.
+  if (!sf1 || !sf2 || !third || !final)
+    return <Empty title="Bracket not drawn yet" body="Semifinals, the third-place match and the final appear once pool play is set." />;
   return (
     <div className="grid items-center gap-6 md:grid-cols-[1fr_1fr]">
       <div className="space-y-4"><BracketCard m={sf1} d={d} mode={mode} /><BracketCard m={sf2} d={d} mode={mode} /></div>

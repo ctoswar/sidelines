@@ -15,6 +15,12 @@ export type LiveTournament = {
 export type TournamentConfig = LiveTournament & {
   meta: string;
   status: "live" | "draft";
+  /**
+   * The public catalogue entry a live tournament is published under — the
+   * Event hub page and the spectator page both live at this slug. Null when
+   * the tournament was parked as a draft.
+   */
+  eventSlug?: string | null;
 };
 
 /** What the new-tournament wizard sends; `meta` is built server-side. */
@@ -24,6 +30,9 @@ export type TournamentDraft = {
   endDate?: string;
   courts?: number;
   divisions?: string[];
+  /** Where the tournament is listed publicly, as "City, Country". */
+  city?: string;
+  country?: string;
   scheduleStart: string;
   /**
    * "live" makes this the tournament the workspace configures (schedule

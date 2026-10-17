@@ -27,10 +27,13 @@ export default function NewTournamentPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
 
-  // Basics: the name and date range that land on the tournaments row.
+  // Basics: the name, date range, and place that land on the tournaments row
+  // (and on the published event the public site lists).
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
 
   // Rules: courts and the first slot are stored; the scoring defaults beside
   // them are the usual pickleball settings and are not persisted yet.
@@ -63,6 +66,12 @@ export default function NewTournamentPage() {
         setError("The end date cannot be before the start date.");
         return;
       }
+      // Every live tournament is published to the Event hub and the public
+      // site, and both render "City, Country" on the event card.
+      if (!city.trim() || !country.trim()) {
+        setError("Add the city and country the tournament is played in.");
+        return;
+      }
     }
     if (step === 1 && (!Number.isFinite(Number(courts)) || Number(courts) < 1)) {
       setError("Enter how many courts the tournament uses.");
@@ -76,18 +85,23 @@ export default function NewTournamentPage() {
     setSaving(true);
     setError("");
     try {
-      await createTournament({
+      const created = await createTournament({
         name: name.trim(),
         startDate,
         endDate,
+        city: city.trim(),
+        country: country.trim(),
         courts: Number(courts),
         divisions,
         scheduleStart: startTime,
         // This wizard is the setup flow for the tournament about to run, so
-        // the new row becomes the live tournament the workspace configures.
+        // the new row becomes the live tournament the workspace configures —
+        // and, being live, the event the hub and the public site list.
         status: "live",
       });
-      router.push("/organizer");
+      // Land on what was just created: a live tournament opens its event hub,
+      // a draft has no public event yet and stays in the workspace.
+      router.push(created.eventSlug ? `/organizer/events/${created.eventSlug}` : "/organizer");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create the tournament.");
       setSaving(false);
@@ -132,6 +146,26 @@ export default function NewTournamentPage() {
                 onChange={(event) => setEndDate(event.target.value)}
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="City"
+                placeholder="e.g. Manila"
+                autoComplete="address-level2"
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+              />
+              <Input
+                label="Country"
+                placeholder="e.g. Philippines"
+                autoComplete="country-name"
+                value={country}
+                onChange={(event) => setCountry(event.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted">
+              The tournament is published to the Event hub and the public site with this place on the
+              event card.
+            </p>
           </div>
         )}
 
@@ -181,7 +215,7 @@ export default function NewTournamentPage() {
             ))}
             <p className="mt-3 text-xs text-muted">
               Creating this makes it the live tournament the workspace configures — any other live
-              tournament returns to draft.
+              tournament returns to draft — and publishes it to the Event hub and the public site.
             </p>
           </div>
         )}
