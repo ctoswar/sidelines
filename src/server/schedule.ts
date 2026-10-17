@@ -67,17 +67,26 @@ export async function loadGames(): Promise<Game[]> {
   return rows.map(gameRowToItem).sort(byScheduleOrder);
 }
 
-/** The organizer's tournament list: live first, then A→Z (the seed order). */
-export async function loadTournaments(): Promise<Tournament[]> {
+/** A tournament as the dashboard lists it: the display fields plus the id the status action needs. */
+export type TournamentListItem = Tournament & { id: string; scheduleStart: string };
+
+/**
+ * Every tournament, live first, then by name. `name`/`meta`/`Live|Draft` are
+ * what the old mock list carried; `id` and `scheduleStart` ride along so the
+ * dashboard can flip a tournament's status.
+ */
+export async function loadTournaments(): Promise<TournamentListItem[]> {
   const rows = await db
     .select()
     .from(t.tournaments)
     // Enum ASC follows definition order, so "live" precedes "draft".
     .orderBy(asc(t.tournaments.status), asc(t.tournaments.name));
   return rows.map((row) => ({
+    id: row.id,
     name: row.name,
     meta: row.meta,
     status: row.status === "live" ? "Live" : "Draft",
+    scheduleStart: row.scheduleStart,
   }));
 }
 
