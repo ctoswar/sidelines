@@ -8,9 +8,10 @@
 // the seed order explicitly and verify-phase7.ts asserts DB order ≡ mock
 // order, the same way verify-phase4 asserts detail parity.
 
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
+import { loadLiveTournament, loadPool, type PoolTeamRow } from "@/server/pool";
 import type { Game, Team, Tournament } from "@/types";
 
 /** "9:00 AM" → minutes since midnight; null for labels this does not parse. */
@@ -102,4 +103,38 @@ export async function loadTournamentTeams(): Promise<Team[]> {
     .innerJoin(t.tournaments, eq(t.tournamentTeams.tournamentId, t.tournaments.id))
     .where(eq(t.tournaments.status, "live"))
     .orderBy(asc(t.tournamentTeams.pool), asc(t.tournamentTeams.seed));
+}
+
+/**
+ * The pool table plus the context the Teams view needs to act on it: which
+ * tournament the pool belongs to, the event it publishes (the signups bridge
+ * reads that event's registrations), and how many signups exist so the view
+ * can offer "build pool from signups" only when there is something to build.
+ */
+export async function loadPoolView(): Promise<{
+  teams: PoolTeamRow[];
+  tournament: { id: string; name: string } | null;
+  eventSlug: string | null;
+  signupCount: number;
+}> {
+  const live = await loadLiveTournament();
+  if (!live) return { teams: [], tournament: null, eventSlug: null, signupCount: 0 };
+
+  const [teams, signupCount] = await Promise.all([
+    loadPool(live.id),
+    live.eventSlug
+      ? db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(t.registrations)
+          .where(eq(t.registrations.eventSlug, live.eventSlug))
+          .then(([row]) => row?.count ?? 0)
+      : Promise.resolve(0),
+  ]);
+
+  return {
+    teams,
+    tournament: { id: live.id, name: live.name },
+    eventSlug: live.eventSlug,
+    signupCount,
+  };
 }
