@@ -48,12 +48,16 @@ export const getServerSession = cache(async (): Promise<AppSession | null> => {
  * This is the authoritative gate. Middleware only checks that *some* session
  * cookie exists — it runs on the edge and cannot reach the database — so a
  * stray or forged cookie is caught here instead, before the workspace renders.
+ *
+ * Returns the full identity (including `id`), so pages that need the user's
+ * own rows — team profile, organization — can load them from the same cached
+ * lookup that performed the check.
  */
-export async function requireRole(role: AppRole): Promise<AppSession> {
-  const session = await getServerSession();
+export async function requireRole(role: AppRole): Promise<SessionUser> {
+  const user = await getServerSessionUser();
 
-  if (!session) redirect(`/login?next=/${role}`);
-  if (session.role !== role) redirect(session.role === "player" ? "/player" : "/organizer");
+  if (!user) redirect(`/login?next=/${role}`);
+  if (user.role !== role) redirect(user.role === "player" ? "/player" : "/organizer");
 
-  return session;
+  return user;
 }

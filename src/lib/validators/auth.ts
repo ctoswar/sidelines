@@ -46,7 +46,7 @@ export const playerSignupSchema = z
     level: z.enum(levels, choose),
     match: z.string().optional(),
     number: z.string().optional(),
-    code: z.string().regex(/^([A-Za-z]{2,6}-\d{4})?$/, "Codes look like IRON-4821."),
+    code: z.string().regex(/^([A-Za-z]{2,6}-\d{4})?$/, "Codes look like TEAM-0001."),
     dominantHand: z.enum(hands).optional(),
     playingSince: z.string().optional(),
     bio: z.string().max(250, "Keep your bio under 250 characters.").optional(),

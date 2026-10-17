@@ -4,7 +4,7 @@
  * (`npm run dev` or `npm run start` on port 3000).
  *
  * Covers: per-user team reads and saves (gates, validation, round-trip), a
- * freshly signed-up player receiving the seeded defaults and creating the
+ * freshly signed-up player receiving the neutral defaults and creating the
  * first row through both write paths (banner-first insert, form save), the
  * banner lifecycle (magic bytes, size cap, its own on-disk tree, replace,
  * delete) and the schedule start-time endpoints (gates, validation,
@@ -23,6 +23,7 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { MY_TEAM } from "../lib/mock-data";
+import { DEFAULT_TEAM } from "../lib/team";
 import { DEFAULT_PRESET, BANNER_PRESETS } from "../lib/team-banner";
 
 const BASE = process.env.APP_URL ?? "http://localhost:3000";
@@ -206,8 +207,8 @@ async function main() {
 
   const freshDefaults = await getTeam(fresh);
   record(
-    "never-saved player gets the seeded defaults",
-    freshDefaults?.name === MY_TEAM &&
+    "never-saved player gets the neutral defaults",
+    freshDefaults?.name === DEFAULT_TEAM.name &&
       freshDefaults?.seed === 1 &&
       freshDefaults?.bannerPath === "" &&
       freshDefaults?.preset === DEFAULT_PRESET,
@@ -219,7 +220,7 @@ async function main() {
   record(
     "banner-first save creates the row with default fields",
     freshUpload.ok &&
-      freshUploadBody?.team?.name === MY_TEAM &&
+      freshUploadBody?.team?.name === DEFAULT_TEAM.name &&
       Boolean(freshUploadBody?.team?.bannerPath?.endsWith(".png")),
     freshUploadBody?.team,
   );

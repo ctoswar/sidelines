@@ -54,10 +54,10 @@ export default function NewTournamentPage() {
       <div className="max-w-xl">
         {step === 0 && (
           <div className="space-y-3">
-            <Input label="Tournament name" defaultValue="Harbor Autumn Open" />
+            <Input label="Tournament name" placeholder="e.g. Spring Open" autoComplete="off" />
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Start date" type="date" defaultValue="2026-11-07" />
-              <Input label="End date" type="date" defaultValue="2026-11-08" />
+              <Input label="Start date" type="date" />
+              <Input label="End date" type="date" />
             </div>
           </div>
         )}

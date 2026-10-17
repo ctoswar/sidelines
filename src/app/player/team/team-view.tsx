@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
-import { JOIN_CODE } from "@/lib/mock-data";
 import { DEFAULT_TEAM, deleteTeamBanner, fetchTeam, saveTeam, uploadTeamBanner, type TeamProfile } from "@/lib/team";
 import type { RosterPlayer } from "@/types";
 import {
@@ -37,7 +36,7 @@ export function TeamView({ roster }: { roster: RosterPlayer[] }) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   // The team lives in Postgres now, so it arrives after mount. Until then the
-  // page shows the seeded defaults — identical server and client HTML.
+  // page shows the neutral placeholder — identical server and client HTML.
   useEffect(() => {
     let alive = true;
     fetchTeam()
@@ -108,8 +107,12 @@ export function TeamView({ roster }: { roster: RosterPlayer[] }) {
     }
   };
 
+  // Derived from the team itself rather than a seeded constant, so a fresh
+  // team gets its own code instead of a fixture's.
+  const joinCode = `${monogramOf(shown.name)}-${String(shown.seed).padStart(4, "0")}`;
+
   const copyCode = () => {
-    navigator.clipboard?.writeText(JOIN_CODE);
+    navigator.clipboard?.writeText(joinCode);
     show("Code copied");
   };
 
@@ -117,7 +120,7 @@ export function TeamView({ roster }: { roster: RosterPlayer[] }) {
     <>
       <PageHeader
         title={shown.name}
-        subtitle={`${roster.length} players · ${divisionLabel(shown.division)} division · Pool A · Seed ${shown.seed}`}
+        subtitle={`${roster.length} player${roster.length === 1 ? "" : "s"} · ${divisionLabel(shown.division)} division · Seed ${shown.seed}`}
       >
         <button type="button" className="btn btn-pri" onClick={editing ? closeEdit : startEdit}>
           {editing ? "Close editor" : "Edit team"}
@@ -159,7 +162,7 @@ export function TeamView({ roster }: { roster: RosterPlayer[] }) {
             </div>
           </div>
           <p className="shrink-0 self-start rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white sm:self-auto">
-            Pool A · Seed {shown.seed}
+            Seed {shown.seed}
           </p>
         </div>
       </div>
@@ -202,7 +205,7 @@ export function TeamView({ roster }: { roster: RosterPlayer[] }) {
                 {divisions.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
             </Field>
-            <Field label="Seed" hint="Shown next to Pool A across the workspace.">
+            <Field label="Seed" hint="Shown across the workspace.">
               <input
                 className="inp"
                 type="number"
@@ -294,8 +297,8 @@ export function TeamView({ roster }: { roster: RosterPlayer[] }) {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-card p-4">
         <div>
           <p className="text-sm text-muted">Team join code</p>
-          <p className="font-score text-3xl font-bold tracking-wide">{JOIN_CODE}</p>
-          <p className="mt-1 text-xs text-muted">Rename as often as you like — this code never changes.</p>
+          <p className="font-score text-3xl font-bold tracking-wide">{joinCode}</p>
+          <p className="mt-1 text-xs text-muted">Built from your team name and seed.</p>
         </div>
         <button className="btn" onClick={copyCode}>Copy code</button>
       </div>

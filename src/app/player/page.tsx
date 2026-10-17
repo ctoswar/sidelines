@@ -3,21 +3,33 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { TeamName } from "@/components/dashboard/team-name";
 import { AnnouncementsFeed } from "@/components/dashboard/announcements-feed";
-import { MY_TEAM } from "@/lib/mock-data";
 import { loadGames } from "@/server/schedule";
+import { requireRole } from "@/server/session";
+import { loadTeamRow } from "@/server/team";
 
 export const metadata = { title: "Home – Sidelines" };
 export const dynamic = "force-dynamic";
 
 export default async function PlayerHome() {
+  const user = await requireRole("player");
+  // Games are matched on this player's own team name — there is no seeded
+  // team constant to match against, so an unscheduled player sees an empty
+  // state instead of someone else's fixture.
+  const team = await loadTeamRow(user.id);
   const games = await loadGames();
-  const mine = games.filter((g) => g.teamA === MY_TEAM || g.teamB === MY_TEAM);
+  const mine = games.filter((g) => g.teamA === team?.name || g.teamB === team?.name);
   const live = mine.find((g) => g.status === "live");
   const next = mine.find((g) => g.status === "next");
+  const results = mine.filter((g) => g.status === "final" && g.score.trim() !== "");
+
+  const first = user.name.trim().split(/\s+/)[0] || user.username || "there";
+  const scheduled = mine.length
+    ? `${mine.length} match${mine.length === 1 ? "" : "es"} scheduled`
+    : "no matches yet";
 
   return (
     <>
-      <PageHeader title="Hi, Alex" subtitle={<><TeamName /> · Harbor Spring Open · Pool A</>} />
+      <PageHeader title={`Hi, ${first}`} subtitle={<><TeamName /> · {scheduled}</>} />
 
       {live && (
         <section className="mb-4 overflow-hidden rounded-2xl bg-field p-6 text-white">
@@ -28,20 +40,36 @@ export default async function PlayerHome() {
         </section>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {next && (
-          <section className="rounded-xl border border-line bg-card p-5">
-             <p className="text-sm font-bold text-brand">Next match</p>
-            <p className="mt-2 font-score text-4xl font-bold">{next.time} · {next.field}</p>
-            <p className="text-muted">{next.teamA} vs {next.teamB}</p>
-          </section>
-        )}
-        <section className="rounded-xl border border-line bg-card p-5">
-          <p className="text-sm font-bold text-brand">Pool A standing</p>
-          <p className="mt-2 font-score text-4xl font-bold tabular-nums">1st · 1–0</p>
-          <p className="text-muted">Points scored 11, against 9</p>
+      {mine.length === 0 ? (
+        <section className="mb-4 rounded-xl border border-line bg-card p-5 text-sm text-muted">
+          No matches yet — your games appear here once an organizer schedules your team.
         </section>
-      </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {next && (
+            <section className="rounded-xl border border-line bg-card p-5">
+               <p className="text-sm font-bold text-brand">Next match</p>
+              <p className="mt-2 font-score text-4xl font-bold">{next.time} · {next.field}</p>
+              <p className="text-muted">{next.teamA} vs {next.teamB}</p>
+            </section>
+          )}
+          <section className="rounded-xl border border-line bg-card p-5">
+            <p className="text-sm font-bold text-brand">Results</p>
+            {results.length ? (
+              <ul className="mt-2 space-y-1 text-sm">
+                {results.map((g) => (
+                  <li key={g.id}>
+                    <span className="font-score font-bold tabular-nums">{g.score}</span>{" "}
+                    <span className="text-muted">{g.teamA} vs {g.teamB}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-muted">No results yet — finished scores show up here.</p>
+            )}
+          </section>
+        </div>
+      )}
 
       <section className="mt-4">
         <AnnouncementsFeed />
