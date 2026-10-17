@@ -131,7 +131,8 @@ async function main() {
   );
   record(
     "loadTournaments matches the mock list (name, meta, Live/Draft display)",
-    JSON.stringify(dbTournaments) === JSON.stringify(mockTournaments.map((tr) => ({ name: tr.name, meta: tr.meta, status: tr.status }))),
+    JSON.stringify(dbTournaments.map(({ name, meta, status }) => ({ name, meta, status }))) ===
+      JSON.stringify(mockTournaments.map((tr) => ({ name: tr.name, meta: tr.meta, status: tr.status }))),
     dbTournaments,
   );
   record(

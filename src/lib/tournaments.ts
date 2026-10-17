@@ -2,7 +2,7 @@
 // to be the schedule-start localStorage key. Readers are organizer workspace
 // pages; the public score pages get the value through the QR URL instead.
 
-import { parse } from "./api-client";
+import { jsonRequest, parse } from "./api-client";
 
 export type LiveTournament = {
   id: string;
@@ -11,20 +11,55 @@ export type LiveTournament = {
   scheduleStart: string;
 };
 
-/** Reads the live tournament's schedule configuration. Organizer session. */
-export async function fetchLiveTournament(): Promise<LiveTournament> {
-  const body = await parse<{ tournament: LiveTournament }>(await fetch("/api/tournaments/live"));
+/** A tournament as the workspace manages it: identity, summary, and status. */
+export type TournamentConfig = LiveTournament & {
+  meta: string;
+  status: "live" | "draft";
+};
+
+/** What the new-tournament wizard sends; `meta` is built server-side. */
+export type TournamentDraft = {
+  name: string;
+  startDate: string;
+  endDate?: string;
+  courts?: number;
+  divisions?: string[];
+  scheduleStart: string;
+  /**
+   * "live" makes this the tournament the workspace configures (schedule
+   * start, pool table, scoring); "draft" parks it for later.
+   */
+  status?: "live" | "draft";
+};
+
+/** Creates a tournament for the signed-in organizer. Organizer session. */
+export async function createTournament(draft: TournamentDraft): Promise<TournamentConfig> {
+  const body = await parse<{ tournament: TournamentConfig }>(
+    await fetch("/api/tournaments", jsonRequest(draft)),
+  );
   return body.tournament;
 }
 
-/** Sets the schedule's first slot; returns the tournament as saved. */
-export async function saveScheduleStart(scheduleStart: string): Promise<LiveTournament> {
-  const body = await parse<{ tournament: LiveTournament }>(
-    await fetch("/api/tournaments/live", {
-      method: "PUT",
+/**
+ * Flips a tournament between live and draft. Making one live returns any
+ * other live tournament to draft — the workspace has exactly one.
+ */
+export async function setTournamentStatus(
+  id: string,
+  status: "live" | "draft",
+): Promise<TournamentConfig> {
+  const body = await parse<{ tournament: TournamentConfig }>(
+    await fetch(`/api/tournaments/${encodeURIComponent(id)}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduleStart }),
+      body: JSON.stringify({ status }),
     }),
   );
+  return body.tournament;
+}
+
+/** Reads the live tournament's schedule configuration. Organizer session. */
+export async function fetchLiveTournament(): Promise<LiveTournament> {
+  const body = await parse<{ tournament: LiveTournament }>(await fetch("/api/tournaments/live"));
   return body.tournament;
 }
