@@ -1,6 +1,6 @@
 // Player team profile API.
 //
-//   GET /api/team — the signed-in player's team (seeded defaults until saved)
+//   GET /api/team — the signed-in player's team (neutral defaults until saved)
 //   PUT /api/team — full update of the six editable fields
 //
 // The banner is deliberately absent from the body: images travel through the

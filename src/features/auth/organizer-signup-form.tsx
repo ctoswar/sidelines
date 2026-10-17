@@ -34,7 +34,7 @@ export function OrganizerSignupForm() {
         <Field label="Confirm password" type="password" autoComplete="new-password" error={errors.confirm?.message} {...register("confirm")} />
         <hr className="border-line" />
         <p className="font-bold">Organization details</p>
-        <Field label="Organization name" placeholder="Harbor Pickleball" error={errors.org?.message} {...register("org")} />
+        <Field label="Organization name" placeholder="e.g. Pickleball Club" error={errors.org?.message} {...register("org")} />
         <SelectField label="Organization type" options={orgTypes} error={errors.orgType?.message} control={control} name="orgType" />
         <Field label="Your role" placeholder="Tournament director" error={errors.title?.message} {...register("title")} />
         <SelectField label="Tournaments you run per year" options={volumes} error={errors.volume?.message} control={control} name="volume" />

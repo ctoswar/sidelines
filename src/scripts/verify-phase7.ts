@@ -320,10 +320,10 @@ async function main() {
 
   const teamPage = await pageHtml("/player/team", player);
   record(
-    "player team page renders the roster from roster_players (JOIN_CODE stays static)",
+    "player team page renders the roster from roster_players (join code derives from the team)",
     teamPage.status === 200 &&
       mockRoster.every((p) => teamPage.html.includes(p.name)) &&
-      teamPage.html.includes("IRON-4821"),
+      /[A-Z]{1,3}-\d{4}/.test(teamPage.html),
     { status: teamPage.status },
   );
 

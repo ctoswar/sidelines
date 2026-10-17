@@ -7,15 +7,16 @@
 // follows without a refetch.
 
 import { parse } from "./api-client";
-import { MY_TEAM } from "./mock-data";
 import { DEFAULT_PRESET } from "./team-banner";
 import type { DivisionId } from "./divisions";
 
 /**
  * The player's own team: what it is called, what its banner looks like, and
- * how it is labelled in the workspace. `name` is a display name only — the
- * seeded `MY_TEAM` constant stays the key used to match mock games, so
- * renaming "Ironwood" does not empty the schedule.
+ * how it is labelled in the workspace. `name` is the display name — and, for
+ * the schedule pages, the key games are matched on. The placeholder below is
+ * only what a player who has not saved a team yet sees; it is never seeded
+ * content, so renaming the team is what puts a real name in the sidebar and
+ * the schedule filter.
  */
 export type TeamProfile = {
   name: string;
@@ -30,7 +31,7 @@ export type TeamProfile = {
 };
 
 export const DEFAULT_TEAM: TeamProfile = {
-  name: MY_TEAM,
+  name: "My Team",
   tagline: "",
   banner: "",
   preset: DEFAULT_PRESET,
@@ -61,7 +62,7 @@ function commit(team: TeamProfile): TeamProfile {
   return team;
 }
 
-/** The team as last seen by this tab — seeded defaults until a fetch lands. */
+/** The team as last seen by this tab — the neutral placeholder until a fetch lands. */
 export function getTeam(): TeamProfile {
   return cached;
 }

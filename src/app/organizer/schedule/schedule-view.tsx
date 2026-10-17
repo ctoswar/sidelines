@@ -95,14 +95,19 @@ export function ScheduleView({ games }: { games: Game[] }) {
   const filterNote = division
     ? ` · ${divisionLabel(division)}${tier ? ` ${tier}` : ""}`
     : "";
+  const courts = new Set(schedule.map((g) => g.field)).size;
 
   return (
     <>
       <PageHeader
         title="Schedule"
-        subtitle={`Saturday · 3 courts · ${filtered.length} match${filtered.length === 1 ? "" : "es"}${filterNote} · tap a match to view its crew`}
+        subtitle={
+          filtered.length
+            ? `${courts} court${courts === 1 ? "" : "s"} · ${filtered.length} match${filtered.length === 1 ? "" : "es"}${filterNote} · tap a match to view its crew`
+            : "No matches scheduled yet"
+        }
       >
-         <button className="btn btn-pri" onClick={() => show("Schedule generated for 3 courts")}>Auto-fill schedule</button>
+         <button className="btn btn-pri" onClick={() => show(courts ? `Schedule generated for ${courts} court${courts === 1 ? "" : "s"}` : "No courts to schedule yet")}>Auto-fill schedule</button>
       </PageHeader>
 
       <div className="mb-2 flex flex-wrap items-center gap-2" role="group" aria-label="Division">

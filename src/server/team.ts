@@ -23,7 +23,7 @@ export type WireTeam = {
   seed: number;
 };
 
-/** Row -> wire shape; a player who never saved gets the seeded defaults. */
+/** Row -> wire shape; a player who never saved gets the neutral defaults. */
 export function toTeamWire(row: TeamRow | null): WireTeam {
   return {
     name: row?.name ?? DEFAULT_TEAM.name,
@@ -46,7 +46,7 @@ export async function loadTeamRow(userId: string): Promise<TeamRow | null> {
 }
 
 /**
- * The seeded team's roster (Phase 7), by shirt number — a real roster sheet
+ * The team's roster (Phase 7), by shirt number — a real roster sheet
  * lists players by number, and the seed has no column that could express the
  * old array's authoring order. `position` is free text in the schema; seed
  * only ever writes "Singles"/"Doubles", the two values the type speaks.
@@ -65,7 +65,7 @@ export async function loadRoster(): Promise<RosterPlayer[]> {
 
 /**
  * Upserts the player's team: `set` columns are written, everything else is
- * created from the seeded defaults (only `name` lacks a column default).
+ * created from the neutral defaults (only `name` lacks a column default).
  * The banner upload uses the same path so a player who has never saved the
  * form still gets a row the moment they pick an image.
  */
