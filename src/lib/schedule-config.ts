@@ -28,7 +28,8 @@ function minutesFromLabel(value: string) {
   return hours * 60 + minutes;
 }
 
-function labelFromMinutes(total: number) {
+/** Minutes since midnight → the "9:00 AM" label the games table stores. */
+export function labelFromMinutes(total: number) {
   const normalized = ((total % 1440) + 1440) % 1440;
   const hours24 = Math.floor(normalized / 60);
   const minutes = normalized % 60;

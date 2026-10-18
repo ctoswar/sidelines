@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -11,7 +12,8 @@ import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime, DEFAULT_START_TIME } from "@/lib/schedule-config";
 import { applyGameResults, fetchGameResults, subscribeToGameResults, type GameResults } from "@/lib/game-results";
 import { fetchGameCrew, subscribeToGameCrew, type GameCrewMap } from "@/lib/game-crew";
-import { fetchLiveTournament } from "@/lib/tournaments";
+import { fetchLiveTournament, type LiveTournament } from "@/lib/tournaments";
+import { autoFillSchedule } from "@/lib/schedule";
 import { useLiveSubscription } from "@/lib/realtime";
 
 const pill = (active: boolean) =>
@@ -30,15 +32,42 @@ export function ScheduleView({ games }: { games: Game[] }) {
   const [crew, setCrew] = useState<GameCrewMap>({});
   const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  // The live tournament decides whether the button can fill anything at all.
+  const [live, setLive] = useState<LiveTournament | null>(null);
+  const [liveLoaded, setLiveLoaded] = useState(false);
+  const [filling, setFilling] = useState(false);
+  const router = useRouter();
 
   // The first slot lives on the live tournament row; failures keep the default.
   useEffect(() => {
     let alive = true;
     fetchLiveTournament()
-      .then((tournament) => { if (alive) setStartTime(tournament.scheduleStart); })
-      .catch(() => { /* the schedule renders from the default 09:00 slot */ });
+      .then((tournament) => { if (alive) { setLive(tournament); setStartTime(tournament.scheduleStart); } })
+      .catch(() => { /* the schedule renders from the default 09:00 slot */ })
+      .finally(() => { if (alive) setLiveLoaded(true); });
     return () => { alive = false; };
   }, []);
+
+  /**
+   * Real auto-fill — the endpoint owns the rules (it refuses with a message
+   * when there is no tournament, no courts, or no entrants), so this only has
+   * to surface what it says and re-read the page.
+   */
+  const fill = async () => {
+    setFilling(true);
+    try {
+      const result = await autoFillSchedule();
+      show(
+        `Scheduled ${result.created} match${result.created === 1 ? "" : "es"} · ` +
+          `${result.courts} court${result.courts === 1 ? "" : "s"} · ${result.slots} slot${result.slots === 1 ? "" : "s"}`,
+      );
+      router.refresh();
+    } catch (err) {
+      show(err instanceof Error ? err.message : "Could not fill the schedule.");
+    } finally {
+      setFilling(false);
+    }
+  };
 
   // Results + crew come from the server; failures keep the last good overlay.
   useEffect(() => {
@@ -107,7 +136,14 @@ export function ScheduleView({ games }: { games: Game[] }) {
             : "No matches scheduled yet"
         }
       >
-         <button className="btn btn-pri" onClick={() => show(courts ? `Schedule generated for ${courts} court${courts === 1 ? "" : "s"}` : "No courts to schedule yet")}>Auto-fill schedule</button>
+        <button
+          className="btn btn-pri"
+          onClick={fill}
+          disabled={filling || !live}
+          title={!live ? (liveLoaded ? "Create a tournament first" : "Loading the tournament…") : undefined}
+        >
+          {filling ? "Filling…" : "Auto-fill schedule"}
+        </button>
       </PageHeader>
 
       <div className="mb-2 flex flex-wrap items-center gap-2" role="group" aria-label="Division">
@@ -147,7 +183,27 @@ export function ScheduleView({ games }: { games: Game[] }) {
 
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-line bg-card p-8 text-center text-muted">
-          No games in this division yet. Use Auto-fill to add some.
+          {schedule.length > 0 ? (
+            <>No games in this division yet — choose another division above.</>
+          ) : !liveLoaded ? (
+            <>No matches yet.</>
+          ) : live ? (
+            <>
+              No matches yet. Add at least two entrants on the{" "}
+              <Link className="font-bold text-flag underline" href="/organizer/teams">
+                Teams
+              </Link>{" "}
+              page, then press Auto-fill schedule.
+            </>
+          ) : (
+            <>
+              No tournament yet. Create one from{" "}
+              <Link className="font-bold text-flag underline" href="/organizer">
+                Tournaments
+              </Link>{" "}
+              — the schedule is built from the live tournament.
+            </>
+          )}
         </div>
       ) : (
         slots.map((t) => (

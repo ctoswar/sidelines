@@ -12,6 +12,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { loadLiveTournament, loadPool, type PoolTeamRow } from "@/server/pool";
+import { DEFAULT_START_TIME, labelFromMinutes, minutesFromTime } from "@/lib/schedule-config";
 import type { Game, Team, Tournament } from "@/types";
 
 /** "9:00 AM" → minutes since midnight; null for labels this does not parse. */
@@ -137,4 +138,106 @@ export async function loadPoolView(): Promise<{
     eventSlug: live.eventSlug,
     signupCount,
   };
+}
+
+// ---------- auto-fill (Schedule → "Auto-fill schedule") ----------
+
+/** Minutes between slots — the spacing the seeded schedule uses (9:00, 10:30…). */
+const SLOT_MINUTES = 90;
+
+/** A match ready for the `games` table: the row id and tournament are attached here. */
+export type GeneratedGame = Pick<
+  Game,
+  "field" | "time" | "teamA" | "teamB" | "division" | "tier" | "status"
+> & {
+  id: string;
+  tournamentId: string;
+};
+
+/**
+ * Round-robin pairings for one pool (circle method): every entrant plays once
+ * per round, so nobody ends up booked in two courts at the same time. An odd
+ * count leaves one bye per round — that pairing is skipped rather than played
+ * against a placeholder.
+ */
+function poolRounds(names: string[]): [string, string][][] {
+  if (names.length < 2) return [];
+  const list = names.length % 2 === 0 ? [...names] : [...names, ""];
+  const half = list.length / 2;
+  const rounds: [string, string][][] = [];
+  let rotating = [...list];
+
+  for (let round = 0; round < list.length - 1; round++) {
+    const pairs: [string, string][] = [];
+    for (let i = 0; i < half; i++) {
+      const a = rotating[i];
+      const b = rotating[list.length - 1 - i];
+      if (a && b) pairs.push([a, b]);
+    }
+    rounds.push(pairs);
+    rotating = [rotating[0], rotating[rotating.length - 1], ...rotating.slice(1, -1)];
+  }
+  return rounds;
+}
+
+/**
+ * Every match for a set of entrants, laid onto courts in time slots.
+ *
+ * Pools run side by side: round N of pool A and round N of pool B share one
+ * pass, filling Court 1…n and spilling into the next 90-minute slot only when
+ * a round has more matches than there are courts.
+ *
+ * Division and tier are neutral defaults. Neither `tournament_teams` nor the
+ * new-tournament wizard stores a division per entrant — the wizard's divisions
+ * land on the published event, not the tournament row — so generated matches
+ * sit under Mixed / 3.0 until the schema can carry a real assignment.
+ *
+ * Ids continue from `idSeed` (the games already in the table): `games.id` is a
+ * global primary key with no default, and the prefix keeps the seed order
+ * helpers sorting them within a slot.
+ */
+export function buildSchedule(input: {
+  tournamentId: string;
+  courts: number;
+  /** First slot, "HH:MM" 24h — the live tournament's schedule_start. */
+  startTime: string;
+  idSeed: number;
+  teams: { name: string; pool: string; seed: number }[];
+}): GeneratedGame[] {
+  const start = minutesFromTime(input.startTime) ?? minutesFromTime(DEFAULT_START_TIME) ?? 9 * 60;
+
+  const byPool = new Map<string, string[]>();
+  const ordered = [...input.teams].sort(
+    (a, b) => a.pool.localeCompare(b.pool) || a.seed - b.seed,
+  );
+  for (const team of ordered) byPool.set(team.pool, [...(byPool.get(team.pool) ?? []), team.name]);
+
+  const poolSchedule = [...byPool.values()].map(poolRounds);
+  const roundCount = Math.max(0, ...poolSchedule.map((rounds) => rounds.length));
+  const games: GeneratedGame[] = [];
+  let slot = 0;
+
+  for (let round = 0; round < roundCount; round++) {
+    const pairs = poolSchedule.flatMap((rounds) => rounds[round] ?? []);
+
+    pairs.forEach(([teamA, teamB], index) => {
+      const court = index % input.courts;
+      const slotIndex = slot + Math.floor(index / input.courts);
+      games.push({
+        id: `auto-${String(input.idSeed + games.length + 1).padStart(4, "0")}`,
+        tournamentId: input.tournamentId,
+        field: `Court ${court + 1}`,
+        time: labelFromMinutes(start + SLOT_MINUTES * slotIndex),
+        teamA,
+        teamB,
+        status: "next",
+        division: "mixed",
+        tier: "3.0",
+      });
+    });
+
+    slot += Math.ceil(pairs.length / input.courts);
+  }
+
+  return games;
 }

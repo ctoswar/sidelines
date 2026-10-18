@@ -22,7 +22,7 @@ export default async function ScorePage({ searchParams }: { searchParams: Promis
       <>
         <PageHeader title="Score a game" subtitle="No matches scheduled yet" />
         <div className="rounded-lg border border-line bg-card p-8 text-center text-muted">
-          No games to score yet. Use Auto-fill to add some.
+          No games to score yet — build the schedule first.
           <div className="mt-4">
             <Link href="/organizer/schedule" className="btn btn-pri">
               Open schedule
