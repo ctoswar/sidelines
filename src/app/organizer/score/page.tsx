@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ScorePanel } from "@/components/dashboard/score-panel";
 import { divisionLabel } from "@/lib/divisions";
@@ -12,6 +13,25 @@ export default async function ScorePage({ searchParams }: { searchParams: Promis
   const { game, scheduleStart } = await searchParams;
   const schedule = applyScheduleStartTime(await loadGames(), scheduleStart ?? "09:00");
   const g = schedule.find((x) => x.id === game) ?? schedule.find((x) => x.status === "live") ?? schedule[0];
+
+  // Starting from an empty database is a first-run state, not an error: with
+  // no games there is nothing to score, so offer the schedule (where Auto-fill
+  // creates them) instead of dereferencing an undefined game. #65
+  if (!g) {
+    return (
+      <>
+        <PageHeader title="Score a game" subtitle="No matches scheduled yet" />
+        <div className="rounded-lg border border-line bg-card p-8 text-center text-muted">
+          No games to score yet. Use Auto-fill to add some.
+          <div className="mt-4">
+            <Link href="/organizer/schedule" className="btn btn-pri">
+              Open schedule
+            </Link>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
