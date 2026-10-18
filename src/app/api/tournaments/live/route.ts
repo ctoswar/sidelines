@@ -37,8 +37,20 @@ async function liveTournament() {
 
 type TournamentRow = NonNullable<Awaited<ReturnType<typeof liveTournament>>>;
 
-function toTournamentWire(row: TournamentRow) {
-  return { id: row.id, name: row.name, scheduleStart: row.scheduleStart };
+/**
+ * Courts live on the published event rather than the tournament row (the
+ * wizard passes them to publishTournamentEvent), so read them back by slug —
+ * a draft tournament has no event and reports null.
+ */
+async function toTournamentWire(row: TournamentRow) {
+  const [detail] = row.eventSlug
+    ? await db
+        .select({ fields: t.eventDetails.fields })
+        .from(t.eventDetails)
+        .where(eq(t.eventDetails.eventId, row.eventSlug))
+        .limit(1)
+    : [];
+  return { id: row.id, name: row.name, scheduleStart: row.scheduleStart, courts: detail?.fields ?? null };
 }
 
 export async function GET() {
@@ -47,7 +59,7 @@ export async function GET() {
 
   const row = await liveTournament();
   if (!row) return NextResponse.json({ message: "No live tournament to configure." }, { status: 404 });
-  return NextResponse.json({ tournament: toTournamentWire(row) });
+  return NextResponse.json({ tournament: await toTournamentWire(row) });
 }
 
 export async function PUT(request: Request) {
@@ -77,5 +89,5 @@ export async function PUT(request: Request) {
   if (!updated) return NextResponse.json({ message: "No live tournament to configure." }, { status: 404 });
 
   publish("schedule");
-  return NextResponse.json({ tournament: toTournamentWire(updated) });
+  return NextResponse.json({ tournament: await toTournamentWire(updated) });
 }

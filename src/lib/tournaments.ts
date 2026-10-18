@@ -9,6 +9,12 @@ export type LiveTournament = {
   name: string;
   /** First slot of the schedule, "HH:MM" 24h. */
   scheduleStart: string;
+  /**
+   * Courts the tournament was created with — carried by the published event
+   * (`event_details.fields`), which is why a draft has none yet. The schedule
+   * reads it to know whether there is anything to auto-fill onto.
+   */
+  courts?: number | null;
 };
 
 /** A tournament as the workspace manages it: identity, summary, and status. */
