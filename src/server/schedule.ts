@@ -59,14 +59,26 @@ function gameRowToItem(row: typeof t.games.$inferSelect): Game {
 }
 
 /**
- * Every game of the seeded schedule, in display order. Consumers depend on
- * it: applyScheduleStartTime derives the shift from schedule[0], per-field
- * game numbers count in array order, and the grids render slot groups in
- * first-appearance order.
+ * Every game of the live tournament's schedule, in display order. Consumers
+ * depend on it: applyScheduleStartTime derives the shift from schedule[0],
+ * per-field game numbers count in array order, and the grids render slot
+ * groups in first-appearance order.
+ *
+ * Scoped to the one live tournament, the same way loadTournamentTeams scopes
+ * the pool table. `games` is global and only cascades when a tournament row
+ * is deleted, so demoting a tournament to draft (making another one live)
+ * leaves its games behind — without this filter every schedule surface mixed
+ * the stale tournament's matches into the live one's draw. No live
+ * tournament reads as an empty schedule, which is what the pages' empty
+ * states already describe.
  */
 export async function loadGames(): Promise<Game[]> {
-  const rows = await db.select().from(t.games);
-  return rows.map(gameRowToItem).sort(byScheduleOrder);
+  const rows = await db
+    .select({ game: t.games })
+    .from(t.games)
+    .innerJoin(t.tournaments, eq(t.games.tournamentId, t.tournaments.id))
+    .where(eq(t.tournaments.status, "live"));
+  return rows.map(({ game }) => gameRowToItem(game)).sort(byScheduleOrder);
 }
 
 /** A tournament as the dashboard lists it: the display fields plus the id the status action needs. */
