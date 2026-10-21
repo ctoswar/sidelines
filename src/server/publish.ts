@@ -111,8 +111,7 @@ export function splitPlace(value: string): [string, string] {
  * share a name never share an event, and calling this twice for the same
  * tournament resolves to the same slug both times.
  */
-export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promise<{ slug: string }> {
-  const startDate = input.startDate;
+export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promise<{ slug: string }> {  const startDate = input.startDate;
   const endDate = input.endDate && input.endDate >= startDate ? input.endDate : startDate;
   const nameBase = slugify(input.name) || "event";
   const ownedSlug = `${nameBase}-${input.tournamentId.replace(/-/g, "").slice(0, 8)}`;
@@ -165,7 +164,10 @@ export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promi
       // A tournament the organizer is still setting up is not happening yet.
       status: startDate < today ? "past" : "upcoming",
       featured: false,
-      live: false,
+      // Only a live tournament is ever published, so its event starts live.
+      // setEventLive keeps the flag in step afterwards, when the tournament
+      // returns to draft.
+      live: true,
       // No teams are attached to a tournament yet; the wizard creates none.
       teamCount: 0,
       color: PALETTE[hash(slug) % PALETTE.length],
@@ -214,4 +216,23 @@ export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promi
     .onConflictDoNothing({ target: t.eventDetails.eventId });
 
   return { slug };
+}
+
+/**
+ * Mirrors a tournament's live/draft status onto its published event.
+ *
+ * `events.live` is what every public surface reads for "happening now": the
+ * homepage's live-now counter, the Live badge on an event row, the Live now
+ * pill on the event page, and the organizer events list. Nothing else writes
+ * that column, so the two status flips (the create route demoting the old
+ * live tournament, and the status PATCH) have to carry it across — otherwise
+ * a tournament can be live in the workspace while its event still reads as
+ * not live, and those badges never light up.
+ *
+ * Takes the transaction handle so callers can flip the tournament and its
+ * event atomically. A tournament with no published event (a draft) is a no-op.
+ */
+export async function setEventLive(tx: Tx, eventSlug: string | null, live: boolean): Promise<void> {
+  if (!eventSlug) return;
+  await tx.update(t.events).set({ live }).where(eq(t.events.slug, eventSlug));
 }

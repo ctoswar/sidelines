@@ -23,7 +23,7 @@ import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { describeTournament } from "@/lib/tournament-meta";
-import { splitPlace, publishTournamentEvent } from "@/server/publish";
+import { splitPlace, publishTournamentEvent, setEventLive } from "@/server/publish";
 import { tournamentCreateSchema } from "@/lib/validators/tournaments";
 
 export async function POST(request: Request) {
@@ -67,10 +67,13 @@ export async function POST(request: Request) {
   // leave nothing in it.
   const created = await db.transaction(async (tx) => {
     if (input.status === "live") {
-      await tx
+      const demoted = await tx
         .update(t.tournaments)
         .set({ status: "draft", updatedAt: new Date() })
-        .where(eq(t.tournaments.status, "live"));
+        .where(eq(t.tournaments.status, "live"))
+        .returning({ eventSlug: t.tournaments.eventSlug });
+      // The displaced tournament's event stops advertising "Live now" too.
+      for (const other of demoted) await setEventLive(tx, other.eventSlug, false);
     }
     const [row] = await tx
       .insert(t.tournaments)
