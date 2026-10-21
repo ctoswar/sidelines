@@ -54,7 +54,22 @@ export function EventsBrowser({ events }: { events: EventItem[] }) {
   }, [events, tab, q, picked]);
 
   const showFeatured = tab === "upcoming" && !searching && !calendar;
-  const featured = showFeatured ? inTab.filter((e) => e.featured) : [];
+  // `featured` is a curated flag, but nothing in the app ever sets it — only
+  // the demo seed did, and publishTournamentEvent always writes false. Gating
+  // the spotlight on it meant a real organizer's events hid the section
+  // entirely. Fall back to the soonest upcoming events when nothing is
+  // curated, so the marquee shows whatever the season actually holds. The
+  // grid is built for one lead card plus two compact ones, hence the cap.
+  const curated = inTab.filter((e) => e.featured);
+  // Fallback pool leads with whatever is live, then soonest first. The lead
+  // card is the one styled for "Live from the court" with the pulsing badge,
+  // so the live event belongs there — matching how the curated seed looked,
+  // where the live event happened to sort first by date anyway. Sort is
+  // stable, so the date order inside each group is preserved.
+  const pool = curated.length > 0 ? curated : [...inTab].sort((a, b) => Number(b.live ?? false) - Number(a.live ?? false));
+  const featured = showFeatured ? pool.slice(0, 3) : [];
+  // Curated picks leave the list below; fallback picks stay in it, so a small
+  // season doesn't empty the queue under the spotlight.
   const rest = showFeatured ? inTab.filter((e) => !e.featured) : inTab;
 
   useEffect(() => {
