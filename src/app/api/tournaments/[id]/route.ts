@@ -14,8 +14,8 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
-import { setEventLive } from "@/server/publish";
-import { tournamentStatusSchema } from "@/lib/validators/tournaments";
+import { setEventFeatured, setEventLive } from "@/server/publish";
+import { tournamentFeaturedSchema, tournamentStatusSchema } from "@/lib/validators/tournaments";
 
 export async function PATCH(
   request: Request,
@@ -31,6 +31,41 @@ export async function PATCH(
 
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ message: "Send a JSON body." }, { status: 400 });
+
+  // Two shapes reach this route: a status flip (make live / save as draft)
+  // and a Spotlight toggle. They are separate fields so the client can send
+  // either without the other, and neither schema accepts a stray body.
+  if ("featured" in body) {
+    const parsed = tournamentFeaturedSchema.safeParse(body);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      return NextResponse.json(
+        { message: first?.message ?? "Check the Spotlight flag.", path: first?.path.join(".") },
+        { status: 400 },
+      );
+    }
+
+    const [row] = await db
+      .select({ id: t.tournaments.id, eventSlug: t.tournaments.eventSlug })
+      .from(t.tournaments)
+      .where(eq(t.tournaments.id, id))
+      .limit(1);
+    if (!row) return NextResponse.json({ message: "Tournament not found." }, { status: 404 });
+    // A draft has no catalogue row to curate yet; the toggle is a no-op until
+    // the tournament is live and published.
+    if (!row.eventSlug) {
+      return NextResponse.json(
+        { message: "This tournament has no public event yet — make it live first." },
+        { status: 409 },
+      );
+    }
+
+    // No realtime publish: the homepage is a force-dynamic server render that
+    // re-reads the catalogue per request, and nothing subscribes to a
+    // catalogue topic. The organizer view re-reads via router.refresh().
+    await db.transaction(async (tx) => setEventFeatured(tx, row.eventSlug, parsed.data.featured));
+    return NextResponse.json({ tournament: { id: row.id, featured: parsed.data.featured } });
+  }
 
   const parsed = tournamentStatusSchema.safeParse(body);
   if (!parsed.success) {

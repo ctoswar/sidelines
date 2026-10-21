@@ -82,17 +82,37 @@ export async function loadGames(): Promise<Game[]> {
 }
 
 /** A tournament as the dashboard lists it: the display fields plus the id the status action needs. */
-export type TournamentListItem = Tournament & { id: string; scheduleStart: string };
+export type TournamentListItem = Tournament & {
+  id: string;
+  scheduleStart: string;
+  /** Its event's homepage-Spotlight flag; null while a draft has no event. */
+  featured: boolean;
+  /** The published event this tournament drives; null while it is a draft. */
+  eventSlug: string | null;
+};
 
 /**
  * Every tournament, live first, then by name. `name`/`meta`/`Live|Draft` are
  * what the old mock list carried; `id` and `scheduleStart` ride along so the
  * dashboard can flip a tournament's status.
+ *
+ * Joins the published event for the Spotlight flag — it lives on `events`,
+ * not on the tournament, so the toggle can show its current state. A draft
+ * has no event, hence the left join and the false fallback.
  */
 export async function loadTournaments(): Promise<TournamentListItem[]> {
   const rows = await db
-    .select()
+    .select({
+      id: t.tournaments.id,
+      name: t.tournaments.name,
+      meta: t.tournaments.meta,
+      status: t.tournaments.status,
+      scheduleStart: t.tournaments.scheduleStart,
+      eventSlug: t.tournaments.eventSlug,
+      featured: t.events.featured,
+    })
     .from(t.tournaments)
+    .leftJoin(t.events, eq(t.tournaments.eventSlug, t.events.slug))
     // Enum ASC follows definition order, so "live" precedes "draft".
     .orderBy(asc(t.tournaments.status), asc(t.tournaments.name));
   return rows.map((row) => ({
@@ -101,6 +121,8 @@ export async function loadTournaments(): Promise<TournamentListItem[]> {
     meta: row.meta,
     status: row.status === "live" ? "Live" : "Draft",
     scheduleStart: row.scheduleStart,
+    eventSlug: row.eventSlug,
+    featured: row.featured ?? false,
   }));
 }
 

@@ -73,6 +73,21 @@ export async function setTournamentStatus(
   return body.tournament;
 }
 
+/**
+ * Marks a live tournament's published event for (or removes it from) the
+ * homepage Spotlight. Drafts have no catalogue row, so the server answers 409
+ * — the caller surfaces that message rather than guessing.
+ */
+export async function setTournamentFeatured(id: string, featured: boolean): Promise<void> {
+  await parse(
+    await fetch(`/api/tournaments/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ featured }),
+    }),
+  );
+}
+
 /** Reads the live tournament's schedule configuration. Organizer session. */
 export async function fetchLiveTournament(): Promise<LiveTournament> {
   const body = await parse<{ tournament: LiveTournament }>(await fetch("/api/tournaments/live"));
