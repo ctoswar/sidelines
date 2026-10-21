@@ -12,7 +12,10 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const events = await loadCatalogue();
   const liveCount = events.filter((event) => event.live).length;
-  const countryCount = new Set(events.map((event) => event.country)).size;
+  // Count where the events actually are — cities, not countries. Most events
+  // in a local league share one country, so a country count reads as 1 no
+  // matter how many venues are on the board.
+  const cityCount = new Set(events.map((event) => `${event.city}, ${event.country}`)).size;
 
   return (
     <>
@@ -29,7 +32,7 @@ export default async function HomePage() {
             <div className="events-hero-note">
               <p className="events-hero-note-label">Sidelines / Dispatch</p>
               <p className="events-hero-note-text">The serve is only the beginning.</p>
-              <div className="events-hero-stats"><span><b>{events.length}</b> events</span><span><b>{countryCount}</b> countries</span><span><b>{liveCount}</b> live now</span></div>
+              <div className="events-hero-stats"><span><b>{events.length}</b> events</span><span><b>{cityCount}</b> cities</span><span><b>{liveCount}</b> live now</span></div>
             </div>
           </section>
           <EventsBrowser events={events} />
