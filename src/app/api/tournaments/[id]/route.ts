@@ -14,6 +14,7 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
+import { setEventLive } from "@/server/publish";
 import { tournamentStatusSchema } from "@/lib/validators/tournaments";
 
 export async function PATCH(
@@ -51,11 +52,16 @@ export async function PATCH(
       .returning();
     if (!row) return null;
     if (parsed.data.status === "live") {
-      await tx
+      const demoted = await tx
         .update(t.tournaments)
         .set({ status: "draft", updatedAt: new Date() })
-        .where(and(eq(t.tournaments.status, "live"), ne(t.tournaments.id, row.id)));
+        .where(and(eq(t.tournaments.status, "live"), ne(t.tournaments.id, row.id)))
+        .returning({ eventSlug: t.tournaments.eventSlug });
+      // Their events stop advertising "Live now" along with them.
+      for (const other of demoted) await setEventLive(tx, other.eventSlug, false);
     }
+    // The public catalogue reads events.live, not tournaments.status.
+    await setEventLive(tx, row.eventSlug, parsed.data.status === "live");
     return row;
   });
 
