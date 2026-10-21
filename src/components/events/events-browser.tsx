@@ -68,9 +68,13 @@ export function EventsBrowser({ events }: { events: EventItem[] }) {
   // stable, so the date order inside each group is preserved.
   const pool = curated.length > 0 ? curated : [...inTab].sort((a, b) => Number(b.live ?? false) - Number(a.live ?? false));
   const featured = showFeatured ? pool.slice(0, 3) : [];
-  // Curated picks leave the list below; fallback picks stay in it, so a small
-  // season doesn't empty the queue under the spotlight.
-  const rest = showFeatured ? inTab.filter((e) => !e.featured) : inTab;
+  // Curated picks that actually made the marquee leave the list below, so they
+  // are not shown twice — but only those three. Excluding every `featured` row
+  // would swallow any curated event past the cap, hiding it from both the
+  // spotlight and the list. Fallback picks are only highlighted, never pulled,
+  // so a small season still has something in the queue below.
+  const marquee = new Set((curated.length > 0 ? featured : []).map((e) => e.slug));
+  const rest = showFeatured ? inTab.filter((e) => !marquee.has(e.slug)) : inTab;
 
   useEffect(() => {
     if (calendar || visibleCount >= rest.length || !loadMoreRef.current) return;

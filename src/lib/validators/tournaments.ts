@@ -31,6 +31,17 @@ export const tournamentStatusSchema = z.object({
 });
 
 /**
+ * The homepage Spotlight toggle. `featured` lives on the published event, not
+ * the tournament, so it is only meaningful once the tournament is live and has
+ * a catalogue row — the route no-ops on a draft.
+ */
+export const tournamentFeaturedSchema = z.object({
+  featured: z.boolean({
+    errorMap: () => ({ message: "Featured must be true or false." }),
+  }),
+});
+
+/**
  * One pool-table entrant. Pickleball players register solo, so `name` is a
  * player's name as often as a team's; either way it is one slot in a pool.
  * `seed` is optional on the wire — the server continues the numbering when a

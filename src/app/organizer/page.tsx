@@ -31,7 +31,12 @@ export default async function TournamentsPage() {
               <span className={`font-bold ${tournament.status === "Live" ? "text-flag" : "text-muted"}`}>
                 {tournament.status}
               </span>
-              <TournamentActions id={tournament.id} status={tournament.status} />
+              <TournamentActions
+                id={tournament.id}
+                status={tournament.status}
+                featured={tournament.featured}
+                hasEvent={Boolean(tournament.eventSlug)}
+              />
             </div>
           </div>
         ))}

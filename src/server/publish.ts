@@ -236,3 +236,24 @@ export async function setEventLive(tx: Tx, eventSlug: string | null, live: boole
   if (!eventSlug) return;
   await tx.update(t.events).set({ live }).where(eq(t.events.slug, eventSlug));
 }
+
+/**
+ * Marks a published event as curated for the homepage Spotlight.
+ *
+ * `events.featured` picks which events the marquee leads with. Like `live`,
+ * nothing else in the app ever wrote it — only the demo seed did — so a real
+ * organizer had no way to hand-pick their own events. This is the one write
+ * path, driven by the workspace's Spotlight toggle.
+ *
+ * Takes the transaction handle for the same reason setEventLive does. A
+ * tournament with no published event (a draft) is a no-op: there is no
+ * catalogue row to curate until it goes live.
+ */
+export async function setEventFeatured(
+  tx: Tx,
+  eventSlug: string | null,
+  featured: boolean,
+): Promise<void> {
+  if (!eventSlug) return;
+  await tx.update(t.events).set({ featured }).where(eq(t.events.slug, eventSlug));
+}
