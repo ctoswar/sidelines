@@ -463,6 +463,8 @@ body {
 .score-rule { color: rgba(244,240,231,.55); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; }
 .score-pause { color: #f4f0e7; text-decoration: underline; text-underline-offset: .2em; }
 .score-pause.is-start { color: #c8ef70; font-weight: 800; }
+/* A game already on record has no clock to start — say so instead of offering one. */
+.score-pause.is-final { color: rgba(244,240,231,.6); font-weight: 800; text-decoration: none; cursor: default; }
 .score-connection { display: inline-flex; align-items: center; gap: .35rem; color: rgba(244,240,231,.8); font-size: .68rem; }
 .score-connection-dot { width: .42rem; height: .42rem; border-radius: 999px; background: #c8ef70; box-shadow: 0 0 0 .2rem rgba(200,239,112,.12); }
 .score-connection.is-offline .score-connection-dot { background: var(--desk-orange); box-shadow: 0 0 0 .2rem rgba(239,101,61,.15); }

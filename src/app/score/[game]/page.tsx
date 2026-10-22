@@ -6,6 +6,7 @@ import { fieldGameLabel, getFieldGameNumbers } from "@/lib/game-labels";
 import { applyScheduleStartTime } from "@/lib/schedule-config";
 import { resolveScoreGrant } from "@/server/score";
 import { loadGames } from "@/server/schedule";
+import { parseFinalScore } from "@/lib/game-results";
 
 // Public, no-account scoring route — opened by scanning a scorekeeper QR
 // code. The link carries only a capability token minted by the organizer;
@@ -104,6 +105,10 @@ export default async function PublicScorePage({
           label={`${divisionLabel(g.division)} · ${g.tier}`}
           publicMode
           token={t}
+          // A game already on the schedule as final reopens read-only: the
+          // recorded score, no clock, no way to restart it from a stale QR.
+          initialScore={parseFinalScore(g.score)}
+          isFinal={g.status === "final"}
         />
       </main>
     </div>

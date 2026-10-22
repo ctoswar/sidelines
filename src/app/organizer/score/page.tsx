@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ScorePanel } from "@/components/dashboard/score-panel";
 import { divisionLabel } from "@/lib/divisions";
+import { parseFinalScore } from "@/lib/game-results";
 import { applyScheduleStartTime } from "@/lib/schedule-config";
 import { loadGames } from "@/server/schedule";
 
@@ -42,6 +43,10 @@ export default async function ScorePage({ searchParams }: { searchParams: Promis
          field={g.field}
          scheduleLabel={`${g.time} · ${g.field}`}
          label={`${divisionLabel(g.division)} · ${g.tier}`}
+         // A game already on the schedule as final reopens read-only, so
+         // opening its scorecard cannot restart or overwrite a finished game.
+         initialScore={parseFinalScore(g.score)}
+         isFinal={g.status === "final"}
        />
     </>
   );
