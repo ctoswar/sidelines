@@ -51,6 +51,23 @@ export function applyGameResults<T extends { id: string; score: string; status: 
   });
 }
 
+/**
+ * Parses a stored final score into the two numbers the scoreboard seeds from.
+ *
+ * Results are written "11–7" with an en dash (U+2013); this also accepts a
+ * plain hyphen or em dash so a hand-entered or older row still parses. Returns
+ * null when the string does not hold two numbers — an unscored game, or a
+ * placeholder — so callers fall back to a fresh 0–0 rather than seeding a
+ * nonsense score.
+ */
+export function parseFinalScore(score: string | null | undefined): [number, number] | null {
+  if (!score) return null;
+  const parts = score.split(/\s*[–—-]\s*/);
+  if (parts.length !== 2 || parts.some((part) => part.trim() === "")) return null;
+  const [a, b] = parts.map((part) => Number(part.trim()));
+  return Number.isFinite(a) && Number.isFinite(b) ? [a, b] : null;
+}
+
 type ResultListener = () => void;
 const resultListeners = new Set<ResultListener>();
 

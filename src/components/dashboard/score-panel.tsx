@@ -79,15 +79,30 @@ export interface ScorePanelProps {
    * it the session (organizer pages) authenticates instead.
    */
   token?: string;
+  /**
+   * The score already on record, so reopening a finished game shows it instead
+   * of a blank 0–0 board. The caller parses it from `game.score`.
+   */
+  initialScore?: [number, number] | null;
+  /**
+   * The game already has a final result. Locks the panel — no clock, no points,
+   * no finish — so a scorekeeper who scans in after the match cannot restart
+   * it or overwrite the recorded score.
+   */
+  isFinal?: boolean;
 }
 
-export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2, label, role, keeper, publicMode = false, gameId, token }: ScorePanelProps) {
+export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2, label, role, keeper, publicMode = false, gameId, token, initialScore, isFinal = false }: ScorePanelProps) {
   const router = useRouter();
   const { show, node } = useToast();
-  const [s, dispatch] = useReducer(makeReducer(teams), [0, 0] as [number, number], makeInitial);
+  const [s, dispatch] = useReducer(makeReducer(teams), initialScore ?? ([0, 0] as [number, number]), makeInitial);
   const [bumped, setBumped] = useState<Side | null>(null);
   const submitting = useRef(false);
-  const finished = (s.score.a >= target || s.score.b >= target) && Math.abs(s.score.a - s.score.b) >= winBy;
+  // `won` is reached by scoring points; `finished` also covers a game that was
+  // already final when this panel loaded. Only `won` may submit — a result
+  // already on record must not be rewritten by merely reopening the panel.
+  const won = (s.score.a >= target || s.score.b >= target) && Math.abs(s.score.a - s.score.b) >= winBy;
+  const finished = won || isFinal;
 
   useEffect(() => {
     if (!s.running) return;
@@ -96,7 +111,9 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
   }, [s.running]);
 
   useEffect(() => {
-    if (!finished || !gameId) return;
+    // Keyed off `won`, not `finished`: a game that arrived already final must
+    // not re-submit just because the panel loaded with its recorded score.
+    if (!won || !gameId) return;
     // Fire once per finished score; the reducer can't change the score after
     // finish without an undo, and the endpoint upserts anyway.
     if (submitting.current) return;
@@ -106,7 +123,7 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
         show(error instanceof Error ? error.message : "Could not save the final score");
       })
       .finally(() => { submitting.current = false; });
-  }, [finished, gameId, s.score.a, s.score.b, token, show]);
+  }, [won, gameId, s.score.a, s.score.b, token, show]);
 
   const toggleOffline = () => {
     if (s.offline && s.queued) show(`${s.queued} events synced`);
@@ -131,6 +148,11 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
   return (
     <>
       <div className={`score-panel mx-auto max-w-sm overflow-hidden rounded-[2rem] border-4 border-line bg-bg shadow-xl${publicMode ? " score-panel-public" : ""}`}>
+        {isFinal && (
+          <p className="score-final-banner bg-field px-4 py-2 text-center text-sm font-bold uppercase tracking-wider text-white">
+            Final · already recorded
+          </p>
+        )}
         {!publicMode && (
           <div className="score-panel-head flex items-center justify-between bg-field px-4 py-3 text-sm text-white">
             <span className="font-bold">{scheduleLabel ?? `${field} · Game to ${target}`}</span>
@@ -150,9 +172,13 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
                   {s.offline ? `Offline · ${s.queued}` : "Online"}
                 </button>
               )}
-              <button onClick={() => dispatch({ type: "pause" })} className={`score-pause ${!s.running && s.secs === 0 ? "is-start" : ""}`}>
-                {s.running ? "Pause" : s.secs === 0 ? "Start" : "Resume"}
-              </button>
+              {isFinal ? (
+                <span className="score-pause is-final">Final</span>
+              ) : (
+                <button onClick={() => dispatch({ type: "pause" })} className={`score-pause ${!s.running && s.secs === 0 ? "is-start" : ""}`}>
+                  {s.running ? "Pause" : s.secs === 0 ? "Start" : "Resume"}
+                </button>
+              )}
             </span>
           </div>
         </div>
@@ -168,7 +194,7 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
                 <button className="btn btn-pri score-point-button mt-3 w-full !py-4 text-lg" disabled={finished} onClick={() => scorePoint(side)}>
                   +1<span className="sr-only"> point for {name}</span>
                 </button>
-                <button className="btn mt-2 w-full" disabled={!s.timeouts[side]} onClick={() => dispatch({ type: "timeout", side })}>Timeout ({s.timeouts[side]})</button>
+                <button className="btn mt-2 w-full" disabled={isFinal || !s.timeouts[side]} onClick={() => dispatch({ type: "timeout", side })}>Timeout ({s.timeouts[side]})</button>
               </div>
             );
           })}
@@ -176,8 +202,8 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
 
         <div className="score-panel-footer px-4 pb-4">
           <div className="flex gap-2">
-            <button className="btn flex-1" disabled={!s.stack.length} onClick={() => dispatch({ type: "undo" })}>Undo</button>
-            <button className="btn flex-1" disabled={!finished} onClick={finish}>Finish game</button>
+            <button className="btn flex-1" disabled={isFinal || !s.stack.length} onClick={() => dispatch({ type: "undo" })}>Undo</button>
+            <button className="btn flex-1" disabled={isFinal || !finished} onClick={finish}>Finish game</button>
           </div>
           {meta && <p className="mt-3 text-center text-xs uppercase tracking-wider text-muted">{meta}</p>}
           <p className="mb-1 mt-4 text-sm font-bold">Event log</p>
