@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { EventDetail } from "@/lib/event-detail";
 import type { TimeMode } from "@/lib/event-time";
 import { formatRange } from "@/lib/events-data";
+import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
 import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
 import { AUTH_CHANGED_EVENT, refreshSession } from "@/lib/auth";
@@ -28,6 +29,11 @@ export function EventShell({ d }: { d: EventDetail }) {
   const [following, setFollowing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [registered, setRegistered] = useState(false);
+  /** The division this account entered, when registered; null on legacy rows. */
+  const [myDivision, setMyDivision] = useState<DivisionId | null>(null);
+  /** The register flow's division picker — open until one is picked or cancelled. */
+  const [picking, setPicking] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const strip = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -49,7 +55,10 @@ export function EventShell({ d }: { d: EventDetail }) {
   const syncRegistration = useCallback(async () => {
     try {
       const state = await fetchRegistrationState(e.slug);
-      if (mounted.current) setRegistered(state.registered);
+      if (mounted.current) {
+        setRegistered(state.registered);
+        setMyDivision(state.division);
+      }
     } catch {
       /* signed out or offline - leave the badge off */
     }
@@ -96,24 +105,43 @@ export function EventShell({ d }: { d: EventDetail }) {
   };
   const scroll = (dx: number) => strip.current?.scrollBy({ left: dx, behavior: "smooth" });
   const share = async () => { await navigator.clipboard?.writeText(window.location.href.split("#")[0]); setCopied(true); setTimeout(() => setCopied(false), 1800); };
+  const applyState = (state: { registered: boolean; division: DivisionId | null }) => {
+    setRegistered(state.registered);
+    setMyDivision(state.division);
+  };
   const register = async () => {
     // Re-read the session rather than trusting state: you can sign out of the
     // public header while standing here, and a click must never flip the badge
-    // without actually storing the registration. The server answers with the
-    // fresh count + flag, which is what the badge shows.
+    // without actually storing the registration. Cancelling just needs the
+    // server's answer; starting opens the division picker, because a
+    // registration now always belongs to one of the three divisions.
     const session = await refreshSession();
     if (!session) {
-      setRegistered(false);
+      applyState({ registered: false, division: null });
+      setPicking(false);
       router.push(`/login?next=${encodeURIComponent(`/events/${e.slug}`)}`);
       return;
     }
+    if (!registered) {
+      setPicking(true);
+      return;
+    }
     try {
-      const state = registered
-        ? await unregisterFromEvent(e.slug)
-        : await registerForEvent(e.slug);
-      setRegistered(state.registered);
+      applyState(await unregisterFromEvent(e.slug));
     } catch {
       /* keep the server's answer as-is; a retry on focus re-syncs */
+    }
+  };
+  /** Confirms a division in the picker and stores the registration. */
+  const chooseDivision = async (division: DivisionId) => {
+    setRegistering(true);
+    try {
+      applyState(await registerForEvent(e.slug, division));
+      setPicking(false);
+    } catch {
+      /* keep the server's answer as-is; a retry on focus re-syncs */
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -141,7 +169,11 @@ export function EventShell({ d }: { d: EventDetail }) {
         <p className="mt-4 text-sm text-white/70">{mode === "event" ? `All times are in ${e.city} (${d.tz.label}).` : `All times are converted to ${zone}.`}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button onClick={() => setFollowing((f) => !f)} aria-pressed={following} className={`rounded-md px-4 py-2 text-sm font-bold ${following ? "bg-white/15 text-white" : "bg-white text-[#14213d]"}`}>{following ? "Following ✓" : "Follow event"}</button>
-          {e.status === "upcoming" && <button onClick={register} aria-pressed={registered} title={registered ? "Click to cancel your registration" : undefined} className={`rounded-md border border-white/30 px-4 py-2 text-sm font-bold ${registered ? "bg-white/15 text-white" : "bg-white text-[#17231f]"}`}>{registered ? "Registered ✓" : "Register for event"}</button>}
+          {e.status === "upcoming" && (
+            <button onClick={register} aria-pressed={registered} title={registered ? "Click to cancel your registration" : "Pick a division to register"} className={`rounded-md border border-white/30 px-4 py-2 text-sm font-bold ${registered ? "bg-white/15 text-white" : "bg-white text-[#17231f]"}`}>
+              {registered ? `Registered ✓${myDivision ? ` · ${divisionLabel(myDivision)}` : ""}` : "Register for event"}
+            </button>
+          )}
           <button onClick={share} className="rounded-md border border-white/30 px-4 py-2 text-sm font-medium">{copied ? "Link copied" : "Share"}</button>
         </div>
       </header>
@@ -174,6 +206,31 @@ export function EventShell({ d }: { d: EventDetail }) {
         {tab === "standings" && <S.StandingsTab d={d} />}
         {tab === "crew" && <S.CrewTab d={d} />}
       </div>
+
+      {picking && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Choose your division" onClick={() => !registering && setPicking(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-card p-6" onClick={(event) => event.stopPropagation()}>
+            <h2 className="font-score text-2xl font-bold">Choose your division</h2>
+            <p className="mt-1 text-sm text-muted">Registering for {e.name}. You can cancel any time from this page or My events.</p>
+            <div className="mt-5 grid gap-2">
+              {divisions.map((division) => (
+                <button
+                  key={division.id}
+                  onClick={() => void chooseDivision(division.id)}
+                  disabled={registering}
+                  className={`flex items-center justify-between rounded-md border px-4 py-3 text-left text-sm font-bold transition-colors ${myDivision === division.id ? "border-brand bg-brand/10 text-fg" : "border-line text-fg hover:border-brand/60"} disabled:opacity-60`}
+                >
+                  {division.label}
+                  <span className="text-xs font-medium text-muted">{division.tiers.join(" · ")}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setPicking(false)} disabled={registering} className="mt-4 w-full rounded-md border border-line px-4 py-2 text-sm font-bold text-muted hover:text-fg disabled:opacity-60">
+              {registering ? "Registering…" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

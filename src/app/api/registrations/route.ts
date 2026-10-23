@@ -12,6 +12,7 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { eventSelection } from "@/server/events";
+import { isDivisionId } from "@/lib/divisions";
 
 export async function GET() {
   const user = await getServerSessionUser();
@@ -24,6 +25,7 @@ export async function GET() {
       email: t.registrations.email,
       name: t.registrations.name,
       at: t.registrations.at,
+      division: t.registrations.division,
       role: t.user.role,
       event: eventSelection,
     })
@@ -33,8 +35,13 @@ export async function GET() {
     .where(eq(t.registrations.userId, user.id))
     .orderBy(desc(t.registrations.at));
 
-  // role is null when the account is gone (user_id set null on delete).
+  // role is null when the account is gone (user_id set null on delete);
+  // division is null only on rows from before the division picker shipped.
   return NextResponse.json({
-    registrations: rows.map((r) => ({ ...r, role: r.role ?? null })),
+    registrations: rows.map((r) => ({
+      ...r,
+      role: r.role ?? null,
+      division: isDivisionId(r.division) ? r.division : null,
+    })),
   });
 }

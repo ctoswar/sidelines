@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
 import { formatRange } from "@/lib/events-data";
+import { divisionLabel } from "@/lib/divisions";
 import { fetchMyRegistrations, unregisterFromEvent, type Registration } from "@/lib/registrations";
 import type { EventItem } from "@/types";
 
@@ -72,6 +73,7 @@ function EventRow({
         </p>
         <p className="text-xs text-muted">
           Registered {shortDate(r.at)}
+          {r.division ? ` · ${divisionLabel(r.division)}` : ""}
           {event && event.status === "upcoming" ? ` · ${startsIn(event.start)}` : ""}
         </p>
       </div>
