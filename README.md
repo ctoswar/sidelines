@@ -10,10 +10,17 @@ Point `.env` at any PostgreSQL database (a Raspberry Pi, a container, or a hoste
 
 ```bash
 cp .env.example .env   # fill in DATABASE_URL, BETTER_AUTH_SECRET, UPLOAD_DIR
-npm install
+npm install            # Node >= 20.12 required (.nvmrc pins 22)
 npm run db:migrate
 npm run db:seed        # production-safe: verifies the database is empty
 npm run dev
+```
+
+If your host Node is broken or unavailable, migrations still work with Docker
+alone (no local Node or `node_modules` needed):
+
+```bash
+npm run db:migrate:docker   # or: sh scripts/db-migrate-docker.sh
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
@@ -43,6 +50,7 @@ the same file builds on x86 machines and on the Raspberry Pi.
 ```bash
 cp .env.example .env   # fill in DATABASE_URL, BETTER_AUTH_SECRET, UPLOAD_DIR
 npm run db:migrate     # from a dev machine, against the target database
+                       # (no working Node? use npm run db:migrate:docker)
 npm run db:seed        # production-safe: no fixtures are inserted
 docker compose up -d app
 ```

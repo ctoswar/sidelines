@@ -13,7 +13,7 @@ set up and what we expect from contributions.
    cd sidelines
    ```
 
-2. Install dependencies:
+2. Install dependencies (Node >= 20.12 — `.nvmrc` pins 22):
 
    ```bash
    npm install
