@@ -194,6 +194,12 @@ export const registrations = pgTable("registrations", {
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   email: text("email").notNull(),
   name: text("name").notNull(),
+  /**
+   * The division they entered — one of the taxonomy ids (mens | womens |
+   * mixed). Null only on rows that predate the picker, which the API maps
+   * to "no division chosen" rather than backfilling a guess.
+   */
+  division: text("division"),
   at: timestamp("at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("registrations_event_email_idx").on(t.eventSlug, t.email),

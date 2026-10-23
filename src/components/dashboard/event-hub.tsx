@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/dashboard/use-toast";
 import { fetchRegistrationState, removeRegistration, type Registration } from "@/lib/registrations";
 import { createAnnouncement, deleteAnnouncement, fetchAnnouncements, type Announcement } from "@/lib/announcements";
+import { divisionLabel } from "@/lib/divisions";
 import { useLiveSubscription } from "@/lib/realtime";
 import type { EventDetail } from "@/lib/event-detail";
 
@@ -127,6 +128,7 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
                 <tr>
                   <th className="p-3">Name</th>
                   <th className="p-3">Email</th>
+                  <th className="p-3">Division</th>
                   <th className="p-3">Role</th>
                   <th className="p-3">Registered</th>
                   <th className="p-3" aria-label="Actions" />
@@ -137,6 +139,7 @@ export function EventHub({ slug, detail }: { slug: string; detail: EventDetail }
                   <tr key={r.id}>
                     <td className="p-3 font-bold">{r.name}</td>
                     <td className="p-3 text-muted">{r.email || "—"}</td>
+                    <td className="p-3">{r.division ? divisionLabel(r.division) : "—"}</td>
                     <td className="p-3 capitalize">{r.role === "organizer" ? "Organizer" : r.role === "player" ? "Player" : "Guest"}</td>
                     <td className="p-3 text-muted">{day(r.at)}</td>
                     <td className="p-3 text-right">
