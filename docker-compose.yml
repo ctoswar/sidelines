@@ -16,6 +16,8 @@
 #
 # Migrations/seeds always run from a dev machine, not the container:
 #   npm run db:migrate && npm run db:seed
+# If the dev machine's Node toolchain is broken, Docker alone works:
+#   npm run db:migrate:docker
 #
 # Backups:     docker compose exec db pg_dump -U sidelines sidelines > dump.sql
 

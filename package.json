@@ -14,7 +14,11 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "db:seed:demo": "tsx src/scripts/seed-demo.ts",
     "db:clean:demo": "tsx src/scripts/clean-demo-data.ts",
-    "db:sync:live": "tsx src/scripts/sync-event-live.ts"
+    "db:sync:live": "tsx src/scripts/sync-event-live.ts",
+    "db:migrate:docker": "sh scripts/db-migrate-docker.sh"
+  },
+  "engines": {
+    "node": ">=20.12"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
