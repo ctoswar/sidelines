@@ -81,6 +81,22 @@ export async function loadGames(): Promise<Game[]> {
   return rows.map(({ game }) => gameRowToItem(game)).sort(byScheduleOrder);
 }
 
+/**
+ * One tournament's own schedule, in the same display order as loadGames.
+ *
+ * The workspace scopes everything to the single live tournament, but the
+ * public event page addresses its event's tournament directly (a draft keeps
+ * publishing its event), so the page needs a scoped read rather than the
+ * workspace's implicit "whichever tournament is live".
+ */
+export async function loadGamesForTournament(tournamentId: string): Promise<Game[]> {
+  const rows = await db
+    .select({ game: t.games })
+    .from(t.games)
+    .where(eq(t.games.tournamentId, tournamentId));
+  return rows.map(({ game }) => gameRowToItem(game)).sort(byScheduleOrder);
+}
+
 /** A tournament as the dashboard lists it: the display fields plus the id the status action needs. */
 export type TournamentListItem = Tournament & {
   id: string;

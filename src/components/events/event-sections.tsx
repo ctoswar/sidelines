@@ -155,9 +155,9 @@ export function TeamsTab({ d }: P) {
             <Dot color={t.color} label={t.name} />
             <div className="min-w-0 flex-1">
               <p className="font-bold">{t.name}</p>
-              <p className="text-sm text-muted">Pool {t.pool} · Seed {t.seed} · {t.roster} players</p>
+              <p className="text-sm text-muted">Pool {t.pool} · Seed {t.seed}{t.roster > 0 ? ` · ${t.roster} player${t.roster === 1 ? "" : "s"}` : ""}</p>
             </div>
-            {d.hasResults && <span className="text-right text-xs text-muted">Sportsmanship<br /><b className="text-base text-fg tabular-nums">{t.sportsmanship}</b></span>}
+            {d.hasResults && t.sportsmanship > 0 && <span className="text-right text-xs text-muted">Sportsmanship<br /><b className="text-base text-fg tabular-nums">{t.sportsmanship}</b></span>}
           </div>
         ))}
       </div>

@@ -38,6 +38,17 @@ export function labelFromMinutes(total: number) {
   return `${hours12}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
+/**
+ * The inverse of labelFromMinutes: "9:00 AM" (what `games.time` stores) →
+ * "09:00" (the 24-hour form every public surface renders through t12).
+ * Null for a label this does not parse, so callers can decide the fallback.
+ */
+export function timeFromLabel(value: string): string | null {
+  const minutes = minutesFromLabel(value);
+  if (minutes === null) return null;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
 /** Shift the seeded schedule while preserving the spacing between rounds. */
 export function applyScheduleStartTime(schedule: readonly Game[], startTime: string) {
   const firstSlot = schedule[0] ? minutesFromLabel(schedule[0].time) : null;

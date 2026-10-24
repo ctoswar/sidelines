@@ -21,8 +21,33 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
+/**
+ * Whether this event has anything to show in a section.
+ *
+ * The strip used to offer all ten tabs unconditionally, so an event with no
+ * results handed the visitor Sportsmanship, Stats and MVP — three sections
+ * with no source anywhere in the schema — each answering "Not available yet".
+ * A section now stays out of the strip until its rows exist and reappears on
+ * its own the moment they do, which keeps the strip honest without needing an
+ * organizer to curate it. Info, Teams, Schedule and Bracket always show: their
+ * empty states say something useful about progress ("registrations land
+ * here", "bracket not drawn yet").
+ */
+function tabHasContent(key: TabKey, d: EventDetail): boolean {
+  switch (key) {
+    case "sportsmanship": return d.teams.some((team) => team.sportsmanship > 0);
+    case "pools": return d.teams.length > 0;
+    case "stats": return d.players.length > 0;
+    case "mvp": return d.mvp.length > 0;
+    case "standings": return d.hasResults;
+    case "crew": return d.crew.length > 0;
+    default: return true;
+  }
+}
+
 export function EventShell({ d }: { d: EventDetail }) {
   const e = d.event;
+  const tabs = TABS.filter((t) => tabHasContent(t.key, d));
   const [tab, setTab] = useState<TabKey>("info");
   const [mode, setMode] = useState<TimeMode>("event");
   const [zone, setZone] = useState("your time zone");
@@ -39,9 +64,11 @@ export function EventShell({ d }: { d: EventDetail }) {
 
   useEffect(() => {
     const h = window.location.hash.slice(1) as TabKey;
-    if (TABS.some((t) => t.key === h)) setTab(h);
+    // A deep link to a section this event cannot fill yet opens Info instead
+    // of a panel that never renders.
+    if (TABS.some((t) => t.key === h) && tabHasContent(h, d)) setTab(h);
     setZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  }, []);
+  }, [d]);
 
   // The public header can sign you out without this page being replaced, so
   // re-read the session when it changes - and on focus, which covers signing
@@ -182,7 +209,7 @@ export function EventShell({ d }: { d: EventDetail }) {
         <div className="flex items-center gap-1">
           <button aria-label="Scroll tabs left" onClick={() => scroll(-220)} className="hidden h-8 w-8 shrink-0 place-items-center rounded-full border border-line bg-card sm:grid">‹</button>
           <div ref={strip} role="tablist" aria-label="Event sections" className="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <button key={t.key} id={`tab-${t.key}`} role="tab" aria-selected={tab === t.key} aria-controls="panel" onClick={() => pick(t.key)}
                 className={`whitespace-nowrap border-b-4 px-4 py-3 text-sm font-bold ${tab === t.key ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>
                 {t.label}
