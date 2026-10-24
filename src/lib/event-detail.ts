@@ -30,6 +30,15 @@ const TZ: Record<string, { offset: number; city: string }> = {
 const FEE: Record<string, string> = { PH: "₱6,000 per team", JP: "¥60,000 per team", SG: "S$400 per team", HK: "HK$2,800 per team", AU: "A$550 per team", KR: "₩300,000 per team", TH: "฿6,000 per team", TW: "NT$5,000 per team" };
 
 function hash(s: string) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+/**
+ * Stable badge colour for an entrant this module never seeded — the pool
+ * rows a real tournament writes have no colour of their own, and the Teams
+ * tab's dot needs one. Same palette, same hash the events use for a slug.
+ */
+export function teamColor(name: string): string {
+  return COLORS[hash(name) % COLORS.length];
+}
 function rng(seed: number) {
   let a = seed;
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };

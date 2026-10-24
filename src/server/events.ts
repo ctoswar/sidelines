@@ -11,15 +11,11 @@ import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import type { EventItem, OpenTournament } from "@/types";
-import type {
-  Crew,
-  EventDetail,
-  MatchInfo,
-  Mvp,
-  PlayerStat,
-  PoolRow,
-  TeamInfo,
-} from "@/lib/event-detail";
+import { parseFinalScore } from "@/lib/game-results";
+import { teamColor, type Crew, type EventDetail, type MatchInfo, type Mvp, type PlayerStat, type PoolRow, type TeamInfo } from "@/lib/event-detail";
+import { timeFromLabel } from "@/lib/schedule-config";
+import { loadPool } from "@/server/pool";
+import { loadGamesForTournament } from "@/server/schedule";
 
 /**
  * The `events` columns as the EventItem wire shape, for API routes that join
@@ -81,7 +77,7 @@ export async function loadEventDetail(slug: string): Promise<EventDetail | null>
     .limit(1);
   if (!detailRow) return null;
 
-  return {
+  const detail: EventDetail = {
     event: eventRowToItem(eventRow),
     about: detailRow.about,
     venue: {
@@ -103,6 +99,141 @@ export async function loadEventDetail(slug: string): Promise<EventDetail | null>
     players: detailRow.players as unknown as PlayerStat[],
     mvp: detailRow.mvp as unknown as Mvp[],
     crew: detailRow.crew as unknown as Crew[],
+  };
+
+  // A published event's detail row is written empty and never filled in, so
+  // the workspace becomes the source for everything the seed left blank.
+  if (detail.teams.length === 0 && detail.matches.length === 0) {
+    await overlayFromWorkspace(detail, slug);
+  }
+  return detail;
+}
+
+/**
+ * Lays the tournament workspace over a published event's placeholder detail
+ * row: `publishTournamentEvent` writes `teams`, `matches`, `pools`, `overall`
+ * and `crew` as empty arrays and nothing ever updates them, while the pool
+ * table and the schedule keep growing in the organizer workspace. That split
+ * is why the tab badge could read "Teams 2" above a "No teams listed yet"
+ * panel — the badge reads `events.teamCount` (synced from the pool) and the
+ * panel read the untouched array.
+ *
+ * Only fires when the row is still empty: a seeded detail row (the demo
+ * fixtures) already carries its own teams, matches and results, and must keep
+ * rendering exactly as stored.
+ */
+async function overlayFromWorkspace(detail: EventDetail, eventSlug: string): Promise<void> {
+  const [tournament] = await db
+    .select({ id: t.tournaments.id })
+    .from(t.tournaments)
+    .where(eq(t.tournaments.eventSlug, eventSlug))
+    .limit(1);
+  if (!tournament) return;
+
+  const [pool, games, crewRows] = await Promise.all([
+    loadPool(tournament.id),
+    loadGamesForTournament(tournament.id),
+    db
+      .select({ scorekeeper: t.gameCrew.scorekeeper, umpire: t.gameCrew.umpire })
+      .from(t.gameCrew)
+      .innerJoin(t.games, eq(t.gameCrew.gameId, t.games.id))
+      .where(eq(t.games.tournamentId, tournament.id)),
+  ]);
+  // Nothing drawn up yet — the row's own empty states describe it better than
+  // a stack of zero-valued tables would.
+  if (pool.length === 0 && games.length === 0) return;
+
+  const teams: TeamInfo[] = pool.map((row) => ({
+    name: row.name,
+    pool: row.pool,
+    seed: row.seed,
+    // An entrant bridged from a signup is one player. A manually added or
+    // CSV-imported team's roster is tracked nowhere, so it stays 0 and the
+    // Teams tab omits the count instead of printing "0 players".
+    roster: row.source === "signups" ? 1 : 0,
+    // No sportsmanship scoring exists in the schema yet; 0 keeps the column
+    // hidden rather than inventing a number.
+    sportsmanship: 0,
+    color: teamColor(row.name),
+  }));
+  const poolOf = new Map(teams.map((team) => [team.name, team.pool]));
+
+  const matches: MatchInfo[] = games.map((game) => {
+    const score = parseFinalScore(game.score);
+    return {
+      id: game.id,
+      // `games` has no date column: the auto-filled draw runs from the
+      // tournament's schedule start, on the event's opening day.
+      date: detail.event.start,
+      time: timeFromLabel(game.time) ?? "00:00",
+      field: game.field,
+      round: poolOf.has(game.teamA) ? `Pool ${poolOf.get(game.teamA)}` : "Pool play",
+      a: game.teamA,
+      b: game.teamB,
+      sa: score?.[0] ?? null,
+      sb: score?.[1] ?? null,
+      status: game.status === "final" ? "final" : game.status === "live" ? "live" : "scheduled",
+    };
+  });
+
+  const named = (value: string) => value.trim();
+  const scorekeepers = [...new Set(crewRows.map((row) => named(row.scorekeeper)).filter(Boolean))];
+  const umpires = [...new Set(crewRows.map((row) => named(row.umpire)).filter(Boolean))];
+
+  const { pools, overall } = standingsOf(teams, matches);
+  detail.teams = teams;
+  detail.matches = matches;
+  detail.pools = pools;
+  detail.overall = overall;
+  detail.crew = [
+    { role: "Scorekeepers", people: scorekeepers },
+    { role: "Umpires", people: umpires },
+  ].filter((group) => group.people.length > 0);
+  // Results unlock the standings section (and only that: sportsmanship, stats
+  // and MVP stay out of the tab strip until something writes their rows).
+  detail.hasResults =
+    detail.hasResults ||
+    matches.some((match) => match.status === "final" && match.sa !== null && match.sb !== null);
+}
+
+/**
+ * W/L/PF/PA per entrant from the finished games, ranked the way the seeded
+ * tables rank: wins first, then point difference, then points scored, then
+ * seed. Games whose entrant has since left the pool are skipped rather than
+ * throwing, and a game without a parseable score never counts as played.
+ */
+function standingsOf(teams: TeamInfo[], matches: MatchInfo[]): {
+  pools: Record<"A" | "B", PoolRow[]>;
+  overall: PoolRow[];
+} {
+  const rows = new Map(
+    teams.map((team) => [team.name, { team: team.name, pool: team.pool, w: 0, l: 0, pf: 0, pa: 0 }]),
+  );
+  const seedOf = new Map(teams.map((team) => [team.name, team.seed]));
+
+  for (const match of matches) {
+    if (match.status !== "final" || match.sa === null || match.sb === null) continue;
+    const a = rows.get(match.a);
+    const b = rows.get(match.b);
+    if (!a || !b) continue;
+    a.pf += match.sa; a.pa += match.sb;
+    b.pf += match.sb; b.pa += match.sa;
+    if (match.sa > match.sb) { a.w++; b.l++; } else { b.w++; a.l++; }
+  }
+
+  const rank = (p: PoolRow, q: PoolRow) =>
+    q.w - p.w ||
+    (q.pf - q.pa) - (p.pf - p.pa) ||
+    q.pf - p.pf ||
+    (seedOf.get(p.team) ?? 0) - (seedOf.get(q.team) ?? 0);
+
+  const overall = [...rows.values()].sort(rank);
+  return {
+    pools: {
+      A: overall.filter((row) => row.pool === "A"),
+      B: overall.filter((row) => row.pool === "B"),
+    },
+    overall,
   };
 }
 
