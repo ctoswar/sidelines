@@ -195,7 +195,7 @@ export function EventShell({ d }: { d: EventDetail }) {
       </div>
 
       <div id="panel" role="tabpanel" className="event-detail-panel mt-7">
-        {tab === "info" && <S.InfoTab d={d} mode={mode} />}
+        {tab === "info" && <S.InfoTab d={d} mode={mode} onJump={pick} />}
         {tab === "teams" && <S.TeamsTab d={d} />}
         {tab === "schedule" && <S.ScheduleTab d={d} mode={mode} />}
         {tab === "sportsmanship" && <S.SportsmanshipTab d={d} />}
