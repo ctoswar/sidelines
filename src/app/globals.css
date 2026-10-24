@@ -273,6 +273,15 @@ body {
 .event-detail-page .bg-field { background: var(--fg); }
 .event-detail-page .btn { transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
 .event-detail-page .btn:hover { transform: translateY(-2px); box-shadow: 4px 4px 0 var(--desk-acid); }
+/* The Info tab's headline numbers double as shortcuts into the section they
+   describe (Teams -> roster, Matches/Courts -> schedule, Days -> details).
+   Hover lifts are expressed as border/shadow only: these cards are also
+   .event-reveal, whose forwards-filled animation owns their transform. */
+.event-stat { display: block; width: 100%; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
+.event-stat:hover { border-color: var(--flag); background: var(--bg); box-shadow: 4px 4px 0 var(--desk-acid); }
+.event-stat:active { box-shadow: 2px 2px 0 var(--desk-acid); }
+.event-stat .event-stat-arrow { display: inline-block; opacity: 0; transform: translateX(-6px); transition: opacity .2s ease, transform .2s ease; }
+.event-stat:hover .event-stat-arrow, .event-stat:focus-visible .event-stat-arrow { opacity: 1; transform: translateX(0); }
 .event-detail-cta { position: relative; overflow: hidden; border: 1px solid var(--desk-line); background: var(--desk-acid); }
 .event-detail-cta::after { position: absolute; right: -2rem; bottom: -5rem; width: 14rem; height: 14rem; border: 1px solid rgba(23,35,31,.22); border-radius: 50%; content: ""; }
 .event-detail-cta > * { position: relative; z-index: 1; }
@@ -299,6 +308,7 @@ body {
   .event-reveal { opacity: 1; transform: none; }
   .event-reveal.is-visible { animation: none; }
   .event-load-sentinel span { animation: none; }
+  .event-stat, .event-stat .event-stat-arrow { transition: none; }
 }
 
 /* Shared product surfaces: the same quiet paper / ink system across marketing,

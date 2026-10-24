@@ -8,8 +8,8 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 type P = { d: EventDetail };
 type PM = P & { mode: TimeMode };
 
-const Card = ({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) => (
-  <section className={`event-reveal rounded-xl border border-line bg-card p-5 ${accent ? "border-l-4 border-l-brand" : ""}`}>{children}</section>
+const Card = ({ children, accent = false, id }: { children: React.ReactNode; accent?: boolean; id?: string }) => (
+  <section id={id} className={`event-reveal rounded-xl border border-line bg-card p-5 ${accent ? "border-l-4 border-l-brand" : ""}`}>{children}</section>
 );
 const H = ({ children }: { children: React.ReactNode }) => <h2 className="mb-3 font-score text-2xl font-bold">{children}</h2>;
 const Empty = ({ title, body }: { title: string; body: string }) => (
@@ -47,20 +47,45 @@ export function MatchCard({ m, d, mode }: { m: MatchInfo; d: EventDetail; mode: 
 }
 
 // ---------- Info ----------
-export function InfoTab({ d, mode }: PM) {
+/** Where a headline number takes you; the shell owns the tab state. */
+type StatTarget = "teams" | "schedule" | "info";
+
+export function InfoTab({ d, mode, onJump }: PM & { onJump?: (tab: StatTarget) => void }) {
   const live = d.matches.filter((m) => m.status === "live");
   const gamesTotal = d.matches.length;
   const [days, setDays] = useState<number | null>(null);
   useEffect(() => { setDays(Math.ceil((Date.parse(`${d.event.start}T00:00:00Z`) - d.tz.offset * 36e5 - Date.now()) / 864e5)); }, [d]);
 
+  const stats: { label: string; value: number; to: StatTarget; hint: string }[] = [
+    { label: "Teams", value: d.event.teams, to: "teams", hint: "See every entered team" },
+    { label: "Matches", value: gamesTotal, to: "schedule", hint: "Browse the full schedule" },
+    { label: "Courts", value: d.fields, to: "schedule", hint: "See the games court by court" },
+    { label: "Days", value: d.days, to: "info", hint: "Jump to the event details" },
+  ];
+  /** Opens the section a number points at; "Days" already sits on this tab, so it scrolls instead. */
+  const openStat = (to: StatTarget) => {
+    if (to !== "info") { onJump?.(to); return; }
+    document.getElementById("event-details")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[["Teams", d.event.teams], ["Matches", gamesTotal], ["Courts", d.fields], ["Days", d.days]].map(([k, v]) => (
-          <div key={k} className="event-reveal rounded-xl border border-line bg-card p-4 text-center">
-            <p className="font-score text-4xl font-bold leading-none tabular-nums">{v}</p>
-            <p className="mt-1 text-sm text-muted">{k}</p>
-          </div>
+        {stats.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => openStat(s.to)}
+            title={s.hint}
+            aria-label={`${s.value} ${s.label} — ${s.hint}`}
+            className="event-stat event-reveal rounded-xl border border-line bg-card p-4 text-center"
+          >
+            <p className="font-score text-4xl font-bold leading-none tabular-nums">{s.value}</p>
+            <p className="mt-1 text-sm text-muted">
+              {s.label}
+              <span aria-hidden="true" className="event-stat-arrow ml-1 font-bold text-flag">→</span>
+            </p>
+          </button>
         ))}
       </div>
 
@@ -83,7 +108,7 @@ export function InfoTab({ d, mode }: PM) {
         <p className="leading-relaxed">{d.about}</p>
       </Card>
 
-      <Card>
+      <Card id="event-details">
         <H>Event details</H>
         <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
           {d.facts.map((f) => (
