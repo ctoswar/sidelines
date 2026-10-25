@@ -12,8 +12,8 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import type { EventItem, OpenTournament } from "@/types";
 import { parseFinalScore } from "@/lib/game-results";
-import { teamColor, type Crew, type EventDetail, type MatchInfo, type Mvp, type PlayerStat, type PoolRow, type TeamInfo } from "@/lib/event-detail";
-import { timeFromLabel } from "@/lib/schedule-config";
+import { teamColor, poolSlotLabel, bracketFeedLabel, type Crew, type EventDetail, type MatchInfo, type Mvp, type PlayerStat, type PoolRow, type TeamInfo } from "@/lib/event-detail";
+import { timeFromLabel, minutesFromTime, labelFromMinutes, SLOT_MINUTES } from "@/lib/schedule-config";
 import { loadPool } from "@/server/pool";
 import { loadGamesForTournament } from "@/server/schedule";
 
@@ -185,6 +185,22 @@ async function overlayFromWorkspace(detail: EventDetail, eventSlug: string): Pro
   detail.matches = matches;
   detail.pools = pools;
   detail.overall = overall;
+  // The knockout rounds the pool table implies, right after the pool games —
+  // display-only until the workspace can draw and score them for real.
+  let lastSlot: number | null = null;
+  for (const game of games) {
+    const minutes = minutesFromTime(timeFromLabel(game.time) ?? "");
+    if (minutes !== null) lastSlot = lastSlot === null ? minutes : Math.max(lastSlot, minutes);
+  }
+  detail.bracket = bracketOf({
+    pools,
+    matches,
+    event: detail.event,
+    // The knockout follows the last pool game; a draw with no games yet starts
+    // where the auto-fill would have begun.
+    slotTime: (afterMinutes) =>
+      timeFromLabel(labelFromMinutes((lastSlot ?? minutesFromTime("09:00") ?? 540) + SLOT_MINUTES + afterMinutes)) ?? "10:30",
+  });
   detail.crew = [
     { role: "Scorekeepers", people: scorekeepers },
     { role: "Umpires", people: umpires },
@@ -235,6 +251,84 @@ function standingsOf(teams: TeamInfo[], matches: MatchInfo[]): {
     },
     overall,
   };
+}
+
+/**
+ * The knockout a published event's pool table implies — the live counterpart
+ * of the seed's bracket builder in src/lib/event-detail.ts.
+ *
+ * A published event's detail row stores `bracket: []`, the workspace schedule
+ * only ever holds pool games, and nothing draws knockout games — so the
+ * Bracket tab stayed frozen on "not drawn yet" above a pool table that
+ * already implied the matchups. Derived here instead, the same way pools and
+ * standings are recomputed on every load, so it follows the draw as it
+ * happens without a write path of its own; these are display rows, not
+ * scheduled games, and stay out of `matches`.
+ *
+ * Two pools of two or more see the classic draw: SF1 sends the top of pool A
+ * against the runner-up of pool B, SF2 mirrors it, and the winners and losers
+ * meet again in the final and the third-place match. A smaller draw (the
+ * whole field in one pool, or one entrant per pool) leans straight into a
+ * single final between the two best-placed entrants — semifinals would
+ * halve a field that size.
+ *
+ * `pools` must be the ranked lists standingsOf returns (best first): the
+ * ranks in these labels mean standings position, not seed order.
+ *
+ * Team names come from the standings the tabs already render, which double as
+ * the seeding: the current order while pool play runs, the final table once
+ * every scheduled game has a result. Until then the slots read as the places
+ * they still stand for ("1st Pool A"), and the final's participants stay
+ * "Winner SF1" placeholders even after pool play, because semifinal results
+ * live nowhere the workspace can read.
+ */
+function bracketOf(input: {
+  pools: Record<"A" | "B", PoolRow[]>;
+  matches: MatchInfo[];
+  event: EventItem;
+  /** Time of a knockout round, `afterMinutes` past the first knockout slot. */
+  slotTime: (afterMinutes: number) => string;
+}): MatchInfo[] {
+  const { pools, matches, event, slotTime } = input;
+  if (pools.A.length + pools.B.length < 2) return [];
+
+  // Pool play is decided once every scheduled game carries a result — the
+  // ranking the tabs already show is then final, good enough to name teams.
+  const settled = matches.length > 0 && matches.every((m) => m.status === "final" && m.sa !== null && m.sb !== null);
+
+  const mk = (id: string, round: string, afterMinutes: number, field: string, a: string, b: string): MatchInfo => ({
+    id,
+    // Knockout day is the closing day; the pool games fill the days before.
+    date: event.end,
+    time: slotTime(afterMinutes),
+    field,
+    round,
+    a,
+    b,
+    sa: null,
+    sb: null,
+    status: "scheduled",
+  });
+  /** The team that holds a slot, or the place it still stands for. */
+  const name = (pool: "A" | "B", rank: number) =>
+    (settled ? pools[pool][rank]?.team : undefined) ?? poolSlotLabel(rank as 0 | 1, pool);
+
+  if (pools.A.length >= 2 && pools.B.length >= 2) {
+    return [
+      mk("br-sf1", "Semifinal", 0, "Court 1", name("A", 0), name("B", 1)),
+      mk("br-sf2", "Semifinal", 0, "Court 2", name("B", 0), name("A", 1)),
+      mk("br-third", "Third place", 2 * SLOT_MINUTES, "Court 2", bracketFeedLabel("Loser", 1), bracketFeedLabel("Loser", 2)),
+      mk("br-final", "Final", 3 * SLOT_MINUTES, "Court 1", bracketFeedLabel("Winner", 1), bracketFeedLabel("Winner", 2)),
+    ];
+  }
+
+  const finalists =
+    pools.A.length >= 1 && pools.B.length >= 1
+      ? [name("A", 0), name("B", 0)]
+      : pools.A.length >= 2
+        ? [name("A", 0), name("A", 1)]
+        : [name("B", 0), name("B", 1)];
+  return [mk("br-final", "Final", 0, "Court 1", finalists[0], finalists[1])];
 }
 
 /** Every event with its live registration count — the event hub list feed. */
