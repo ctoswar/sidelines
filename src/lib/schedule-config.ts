@@ -8,6 +8,9 @@ import type { Game } from "@/types";
 
 export const DEFAULT_START_TIME = "09:00";
 
+/** Minutes between slots — the spacing the schedule builder lays games out with. */
+export const SLOT_MINUTES = 90;
+
 /** "09:30" -> minutes since midnight; null when the string is not a day time. */
 export function minutesFromTime(value: string) {
   const [hours, minutes] = value.split(":").map(Number);

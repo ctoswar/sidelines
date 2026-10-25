@@ -12,7 +12,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { loadLiveTournament, loadPool, type PoolTeamRow } from "@/server/pool";
-import { DEFAULT_START_TIME, labelFromMinutes, minutesFromTime } from "@/lib/schedule-config";
+import { DEFAULT_START_TIME, labelFromMinutes, minutesFromTime, SLOT_MINUTES } from "@/lib/schedule-config";
 import type { Game, Team, Tournament } from "@/types";
 
 /** "9:00 AM" → minutes since midnight; null for labels this does not parse. */
@@ -191,9 +191,6 @@ export async function loadPoolView(): Promise<{
 }
 
 // ---------- auto-fill (Schedule → "Auto-fill schedule") ----------
-
-/** Minutes between slots — the spacing the seeded schedule uses (9:00, 10:30…). */
-const SLOT_MINUTES = 90;
 
 /** A match ready for the `games` table: the row id and tournament are attached here. */
 export type GeneratedGame = Pick<

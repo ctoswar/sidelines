@@ -39,6 +39,32 @@ function hash(s: string) { let h = 2166136261; for (const c of s) { h ^= c.charC
 export function teamColor(name: string): string {
   return COLORS[hash(name) % COLORS.length];
 }
+
+/**
+ * The label for a knockout slot still waiting on pool play: the place the
+ * entrant has to finish. Rank 0 = "1st Pool A", rank 1 = "2nd Pool B"…
+ */
+export function poolSlotLabel(rank: 0 | 1, pool: "A" | "B"): string {
+  return `${rank === 0 ? "1st" : "2nd"} Pool ${pool}`;
+}
+
+/**
+ * The label for a knockout fed by the semifinals, whose winners and losers
+ * are only known once those have been played.
+ */
+export function bracketFeedLabel(kind: "Winner" | "Loser", semifinal: 1 | 2): string {
+  return `${kind} SF${semifinal}`;
+}
+
+/**
+ * Names that stand for "decided later" rather than a real team — both the
+ * seed and the live bracket derivation emit exactly this vocabulary, so the
+ * cards can mute and italicise the slot instead of presenting it as a team.
+ */
+export function isPlaceholderEntrant(name: string): boolean {
+  return /^(1st|2nd) Pool [AB]$/.test(name) || /^(Winner|Loser) SF\d$/.test(name);
+}
+
 function rng(seed: number) {
   let a = seed;
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -124,13 +150,13 @@ export function getEventDetail(slug: string): EventDetail | null {
     return { id, date: bDate, time, field, round, a, b, sa, sb, status: "final" };
   };
   const known = e.status === "past";
-  const lab = (p: "A" | "B", i: number) => (known ? pools[p][i].team : `${i + 1}${i ? "nd" : "st"} Pool ${p}`);
+  const lab = (p: "A" | "B", i: number) => (known ? pools[p][i].team : poolSlotLabel(i as 0 | 1, p));
   const sf1 = mk("sf1", "Semifinal", SLOTS[1], "Court 1", lab("A", 0), lab("B", 1));
   const sf2 = mk("sf2", "Semifinal", SLOTS[1], "Court 2", lab("B", 0), lab("A", 1));
   const win = (m: MatchInfo) => (m.sa! > m.sb! ? m.a : m.b), lose = (m: MatchInfo) => (m.sa! > m.sb! ? m.b : m.a);
   const bracket = known
     ? [sf1, sf2, mk("third", "Third place", SLOTS[3], "Court 2", lose(sf1), lose(sf2)), mk("final", "Final", SLOTS[4], "Court 1", win(sf1), win(sf2))]
-    : [sf1, sf2, mk("third", "Third place", SLOTS[3], "Court 2", "Loser SF1", "Loser SF2"), mk("final", "Final", SLOTS[4], "Court 1", "Winner SF1", "Winner SF2")];
+    : [sf1, sf2, mk("third", "Third place", SLOTS[3], "Court 2", bracketFeedLabel("Loser", 1), bracketFeedLabel("Loser", 2)), mk("final", "Final", SLOTS[4], "Court 1", bracketFeedLabel("Winner", 1), bracketFeedLabel("Winner", 2))];
 
   // ---- overall standings ----
   let overall: PoolRow[];

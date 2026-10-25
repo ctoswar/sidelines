@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { EventDetail, MatchInfo, PoolRow } from "@/lib/event-detail";
+import { isPlaceholderEntrant, type EventDetail, type MatchInfo, type PoolRow } from "@/lib/event-detail";
 import { dayLabel, shown, type TimeMode } from "@/lib/event-time";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 
@@ -29,7 +29,7 @@ export function MatchCard({ m, d, mode }: { m: MatchInfo; d: EventDetail; mode: 
   const aWon = done && m.sa! > m.sb!;
   const row = (name: string, score: number | null, won: boolean) => (
     <div className="flex items-center justify-between gap-3">
-      <span className={`truncate ${won ? "font-bold" : done ? "text-muted" : "font-medium"}`}>{name}</span>
+      <span className={`truncate ${isPlaceholderEntrant(name) ? "text-muted italic" : won ? "font-bold" : done ? "text-muted" : "font-medium"}`}>{name}</span>
       <span className={`font-score text-2xl tabular-nums ${won ? "font-bold" : ""}`}>{score ?? "–"}</span>
     </div>
   );
@@ -279,19 +279,36 @@ function BracketCard({ m, d, mode }: { m: MatchInfo; d: EventDetail; mode: TimeM
   );
 }
 export function BracketTab({ d, mode }: PM) {
-  const [sf1, sf2, third, final] = d.bracket;
-  // A tournament that has not drawn its bracket yet has nothing to line up;
-  // the seeded events always carry all four cards.
-  if (!sf1 || !sf2 || !third || !final)
-    return <Empty title="Bracket not drawn yet" body="Semifinals, the third-place match and the final appear once pool play is set." />;
+  // Seeded events store all four cards; a published event's bracket is derived
+  // from its pool table (bracketOf in server/events.ts) and collapses to a
+  // single final when the draw is too small for semifinals.
+  const semis = d.bracket.filter((m) => m.round === "Semifinal");
+  const final = d.bracket.find((m) => m.round === "Final");
+  const third = d.bracket.find((m) => m.round === "Third place");
+  // A draw without two entries has no champion to play for at all.
+  if (!final && semis.length === 0)
+    return <Empty title="Bracket not drawn yet" body="The knockout round appears here once the event has at least two entries." />;
+  const noteText =
+    d.event.status !== "past" &&
+    (semis.length > 0
+      ? "Teams fill in as pool play finishes. Top two from each pool advance."
+      : "The finalists are the top-placed entries once pool play is complete.");
+  if (semis.length === 0)
+    return (
+      <div className="space-y-4">
+        {final && <div className="mx-auto max-w-sm"><BracketCard m={final} d={d} mode={mode} /></div>}
+        {third && <div className="mx-auto max-w-sm"><BracketCard m={third} d={d} mode={mode} /></div>}
+        {noteText && <p className="text-sm text-muted">{noteText}</p>}
+      </div>
+    );
   return (
     <div className="grid items-center gap-6 md:grid-cols-[1fr_1fr]">
-      <div className="space-y-4"><BracketCard m={sf1} d={d} mode={mode} /><BracketCard m={sf2} d={d} mode={mode} /></div>
+      <div className="space-y-4">{semis.map((m) => <BracketCard key={m.id} m={m} d={d} mode={mode} />)}</div>
       <div className="space-y-4">
-        <BracketCard m={final} d={d} mode={mode} />
-        <BracketCard m={third} d={d} mode={mode} />
+        {final && <BracketCard m={final} d={d} mode={mode} />}
+        {third && <BracketCard m={third} d={d} mode={mode} />}
       </div>
-      {d.event.status !== "past" && <p className="text-sm text-muted md:col-span-2">Teams fill in as pool play finishes. Top two from each pool advance.</p>}
+      {noteText && <p className="text-sm text-muted md:col-span-2">{noteText}</p>}
     </div>
   );
 }
