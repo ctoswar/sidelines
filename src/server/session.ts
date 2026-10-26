@@ -41,6 +41,13 @@ export const getServerSession = cache(async (): Promise<AppSession | null> => {
   return rest;
 });
 
+/** Where each role actually belongs — the target for a mismatched redirect. */
+const HOME: Record<AppRole, string> = {
+  player: "/player",
+  organizer: "/organizer",
+  admin: "/admin",
+};
+
 /**
  * Requires a session with the given role, redirecting otherwise. Call from a
  * server component layout/page; it never returns a mismatched session.
@@ -56,8 +63,8 @@ export const getServerSession = cache(async (): Promise<AppSession | null> => {
 export async function requireRole(role: AppRole): Promise<SessionUser> {
   const user = await getServerSessionUser();
 
-  if (!user) redirect(`/login?next=/${role}`);
-  if (user.role !== role) redirect(user.role === "player" ? "/player" : "/organizer");
+  if (!user) redirect(`/login?next=${HOME[role]}`);
+  if (user.role !== role) redirect(HOME[user.role]);
 
   return user;
 }

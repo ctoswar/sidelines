@@ -11,7 +11,10 @@ import { nextCookies } from "better-auth/next-js";
 import { db } from "./db";
 import * as schema from "./schema";
 
-export const ROLES = ["player", "organizer"] as const;
+// Ordered weakest first: `admin` outranks `organizer`, which outranks
+// `player`. Signup can only ever mint the first two — the third is written by
+// src/scripts/create-admin.ts, which is why there is no public path to it.
+export const ROLES = ["player", "organizer", "admin"] as const;
 export type AppRole = (typeof ROLES)[number];
 
 /** Normalizes a URL-ish value to a bare origin; null when empty/invalid. */
@@ -119,7 +122,7 @@ export type Auth = typeof auth;
 export function readUserFlags(user: unknown): { role: AppRole; username: string | null } {
   const record = (user ?? {}) as Record<string, unknown>;
   return {
-    role: record.role === "organizer" ? "organizer" : "player",
+    role: record.role === "organizer" || record.role === "admin" ? record.role : "player",
     username: typeof record.username === "string" && record.username ? record.username : null,
   };
 }

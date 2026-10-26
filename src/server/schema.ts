@@ -33,7 +33,9 @@ import {
 
 // ---------- enums ----------
 
-export const roleEnum = pgEnum("role", ["player", "organizer"]);
+// `admin` sits above `organizer`: it owns the homepage Spotlight curation and
+// cannot be self-assigned through signup (see src/app/api/auth/signup/route.ts).
+export const roleEnum = pgEnum("role", ["player", "organizer", "admin"]);
 export const tournamentStatusEnum = pgEnum("tournament_status", ["live", "draft"]);
 export const gameStatusEnum = pgEnum("game_status", ["live", "final", "next"]);
 export const eventStatusEnum = pgEnum("event_status", ["upcoming", "past"]);

@@ -101,9 +101,13 @@ export async function loadGamesForTournament(tournamentId: string): Promise<Game
 export type TournamentListItem = Tournament & {
   id: string;
   scheduleStart: string;
-  /** Its event's homepage-Spotlight flag; null while a draft has no event. */
-  featured: boolean;
-  /** The published event this tournament drives; null while it is a draft. */
+  /**
+   * The published event this tournament drives; null while it is a draft.
+   *
+   * The homepage-Spotlight flag used to ride along here too. It moved to
+   * /admin — curation is an admin's call, not an organizer's — so the list no
+   * longer joins `events` at all.
+   */
   eventSlug: string | null;
 };
 
@@ -111,10 +115,6 @@ export type TournamentListItem = Tournament & {
  * Every tournament, live first, then by name. `name`/`meta`/`Live|Draft` are
  * what the old mock list carried; `id` and `scheduleStart` ride along so the
  * dashboard can flip a tournament's status.
- *
- * Joins the published event for the Spotlight flag — it lives on `events`,
- * not on the tournament, so the toggle can show its current state. A draft
- * has no event, hence the left join and the false fallback.
  */
 export async function loadTournaments(): Promise<TournamentListItem[]> {
   const rows = await db
@@ -125,10 +125,8 @@ export async function loadTournaments(): Promise<TournamentListItem[]> {
       status: t.tournaments.status,
       scheduleStart: t.tournaments.scheduleStart,
       eventSlug: t.tournaments.eventSlug,
-      featured: t.events.featured,
     })
     .from(t.tournaments)
-    .leftJoin(t.events, eq(t.tournaments.eventSlug, t.events.slug))
     // Enum ASC follows definition order, so "live" precedes "draft".
     .orderBy(asc(t.tournaments.status), asc(t.tournaments.name));
   return rows.map((row) => ({
@@ -138,7 +136,6 @@ export async function loadTournaments(): Promise<TournamentListItem[]> {
     status: row.status === "live" ? "Live" : "Draft",
     scheduleStart: row.scheduleStart,
     eventSlug: row.eventSlug,
-    featured: row.featured ?? false,
   }));
 }
 

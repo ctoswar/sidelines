@@ -13,6 +13,7 @@ cp .env.example .env   # fill in DATABASE_URL, BETTER_AUTH_SECRET, UPLOAD_DIR
 npm install            # Node >= 20.12 required (.nvmrc pins 22)
 npm run db:migrate
 npm run db:seed        # production-safe: verifies the database is empty
+npm run db:admin       # creates admin@sidelines.app (see "Admin workspace")
 npm run dev
 ```
 
@@ -107,6 +108,26 @@ Player signup supports profile picture uploads using JPG, PNG, or WebP files up 
 - `/player/registrations` — registered events with cancel flows.
 - `/player/profile` — editable player identity, pickleball playbook, profile picture, and bio.
 
+### Admin workspace
+
+The third role, for site curation. It has no signup form: `npm run db:admin`
+writes the account directly against the database (defaults to
+`admin@sidelines.app` / `Sidelines!2026`, and re-running resets that password):
+
+```bash
+npm run db:admin
+npm run db:admin -- admin@sidelines.app 'a-new-password'   # rotate, or mint another
+```
+
+- `/admin` — the homepage **Spotlight**. Adds or removes any published event
+  from the front-page marquee.
+
+Spotlighting is deliberately not an organizer control. An organizer publishes
+their own tournament (Make live / Save as draft) but cannot put it in front of
+the site — `PATCH /api/admin/events/[slug]` answers 403 for every other role,
+and the organizer API has no equivalent route. Signup cannot mint an admin
+either: a payload asking for `role: "admin"` is coerced back to `player`.
+
 ### QR scoring
 
 QR codes open a role-specific scoring screen at `/score/[game]` without requiring a separate scorekeeper account. Each link carries only a capability token minted by the organizer; the person's name and role are resolved server-side from `game_crew`, so old or edited links simply get an invalid-link screen. The scoring model uses pickleball defaults:
@@ -141,7 +162,7 @@ Realtime updates (results, crew saves, schedule changes, registrations, announce
 - `player@example.com` — player workspace
 - `organizer@example.com` — organizer workspace
 
-For production, `npm run db:seed` is intentionally a no-op: organizers and players create real accounts and content through the UI. To remove previously seeded demo rows from a database, run `npm run db:clean:demo`.
+For production, `npm run db:seed` is intentionally a no-op: organizers and players create real accounts and content through the UI. The admin account is the one exception — it is not sign-up-able, so create it with `npm run db:admin` (see "Admin workspace"). To remove previously seeded demo rows from a database, run `npm run db:clean:demo`.
 
 Email/password is the working sign-in path. Google sign-in is not configured yet.
 
