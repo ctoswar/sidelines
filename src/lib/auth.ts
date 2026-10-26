@@ -20,14 +20,17 @@ import type {
   PlayerSignupInput,
 } from "@/lib/validators/auth";
 
-export type Role = "player" | "organizer";
+// `admin` is the third role: it curates the homepage Spotlight from /admin and
+// is never offered by the signup forms.
+export type Role = "player" | "organizer" | "admin";
 export type AuthResult =
   | { ok: true; message: string; role: Role }
   | { ok: false; message: string };
 
 export type AppSession = { email: string; name: string; username?: string; role: Role };
 
-export const homeFor = (role: Role) => (role === "player" ? "/player" : "/organizer");
+export const homeFor = (role: Role) =>
+  role === "player" ? "/player" : role === "admin" ? "/admin" : "/organizer";
 
 /** Fired when the session changes, so UI outside the workspace can react. */
 export const AUTH_CHANGED_EVENT = "sidelines:auth-changed";
@@ -47,7 +50,7 @@ function toSession(user: unknown): AppSession | null {
     email: u.email,
     name: typeof u.name === "string" ? u.name : "",
     username: typeof u.username === "string" ? u.username : undefined,
-    role: u.role === "organizer" ? "organizer" : "player",
+    role: u.role === "organizer" || u.role === "admin" ? u.role : "player",
   };
 }
 

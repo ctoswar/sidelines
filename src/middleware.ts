@@ -7,10 +7,10 @@
 //      exist? Signed-out visitors get a real 302 to /login before any page
 //      bytes stream.
 //
-//   2. The player/organizer layouts call requireRole(), which loads the real
-//      session from Postgres and verifies the role. That is the authoritative
-//      check — a stray cookie gets you past middleware but not past the
-//      layout, which refuses to render the wrong role's workspace.
+//   2. The player/organizer/admin layouts call requireRole(), which loads the
+//      real session from Postgres and verifies the role. That is the
+//      authoritative check — a stray cookie gets you past middleware but not
+//      past the layout, which refuses to render the wrong role's workspace.
 //
 // When the layout rejects a role mismatch it throws Next's redirect(), which
 // the router delivers inside the RSC payload rather than as a status code —
@@ -24,7 +24,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 
-const WORKSPACE_PREFIXES = ["/player", "/organizer"];
+const WORKSPACE_PREFIXES = ["/player", "/organizer", "/admin"];
 
 /** Better Auth's cookie name, with the __Secure- prefix it gains over HTTPS. */
 const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
@@ -48,5 +48,5 @@ export function middleware(request: NextRequest) {
 export const config = {
   // Run only on the workspaces — never on auth routes, the API, or static
   // assets, where a redirect loop or an extra hop would only hurt.
-  matcher: ["/player/:path*", "/organizer/:path*"],
+  matcher: ["/player/:path*", "/organizer/:path*", "/admin/:path*"],
 };

@@ -70,6 +70,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Send a JSON body." }, { status: 400 });
   }
 
+  // Anything that is not the organizer form becomes a player — including a
+  // hand-crafted body asking for "admin". The admin role is created by
+  // src/scripts/create-admin.ts against the database; there is deliberately no
+  // HTTP path that can mint one, so this line must never widen to
+  // `body.role as AppRole`.
   const role: AppRole = body.role === "organizer" ? "organizer" : "player";
 
   // Same schemas the forms already run, re-checked server-side.
