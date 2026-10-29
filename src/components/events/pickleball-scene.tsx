@@ -125,24 +125,39 @@ export function PickleballScene() {
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Soft cast shadows ground every object on the court — the single biggest
+    // jump from "flat diagram" to "lit diorama".
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.style.width = "100%";
     renderer.domElement.style.height = "100%";
     renderer.domElement.style.display = "block";
     wrapper.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
+    // A 3/4 broadcast angle from an elevated near corner, so the court reads
+    // with real perspective depth and both paddle faces catch the light.
     const camera = new THREE.PerspectiveCamera(40, 1.5, 0.1, 80);
-    const CAMERA_BASE = new THREE.Vector3(2.0, 4.9, 14.6);
-    const LOOK_AT = new THREE.Vector3(0, 1.15, 0);
+    const CAMERA_BASE = new THREE.Vector3(6.0, 5.0, 14.4);
+    const LOOK_AT = new THREE.Vector3(0.9, 1.0, -0.2);
     camera.position.copy(CAMERA_BASE);
     camera.lookAt(LOOK_AT);
 
-    scene.add(new THREE.HemisphereLight(0xfffdf4, 0xb9b2a2, 1.25));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-    sun.position.set(7, 12, 6);
+    scene.add(new THREE.HemisphereLight(0xfffdf4, 0x9c9686, 1.0));
+    const sun = new THREE.DirectionalLight(0xfff4e6, 2.1);
+    sun.position.set(6, 14, 7);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -11;
+    sun.shadow.camera.right = 11;
+    sun.shadow.camera.top = 11;
+    sun.shadow.camera.bottom = -11;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 44;
+    sun.shadow.bias = -0.0006;
     scene.add(sun);
-    const rim = new THREE.DirectionalLight(0xffe8d8, 0.55);
-    rim.position.set(-8, 6, -6);
+    const rim = new THREE.DirectionalLight(0xffd9b0, 0.7);
+    rim.position.set(-9, 5, -7);
     scene.add(rim);
 
     // ── Court ────────────────────────────────────────────────────────────
@@ -168,11 +183,23 @@ export function PickleballScene() {
 
     const slab = new THREE.Mesh(track(new THREE.BoxGeometry(15.6, 0.12, 8)), track(new THREE.MeshStandardMaterial({ color: ACID, roughness: 0.95 })));
     slab.position.y = 0.08;
+    slab.receiveShadow = true;
     scene.add(slab);
+
+    // Darker non-volley "kitchen" zones either side of the net — real courts
+    // paint them a different colour, and it gives the flat slab some depth.
+    const kitchenMat = track(new THREE.MeshStandardMaterial({ color: 0x9fce4d, roughness: 0.95 }));
+    for (const x of [-1.25, 1.25]) {
+      const kitchen = new THREE.Mesh(track(new THREE.BoxGeometry(2.4, 0.13, 8)), kitchenMat);
+      kitchen.position.set(x, 0.075, 0);
+      kitchen.receiveShadow = true;
+      scene.add(kitchen);
+    }
 
     const courtLine = (width: number, depth: number, x: number, z: number) => {
       const line = new THREE.Mesh(track(new THREE.BoxGeometry(width, 0.015, depth)), chalkMat);
       line.position.set(x, 0.15, z);
+      line.receiveShadow = true;
       scene.add(line);
     };
     courtLine(15.6, 0.1, 0, 3.95);
@@ -186,39 +213,46 @@ export function PickleballScene() {
 
     // ── Net ──────────────────────────────────────────────────────────────
     const inkMat = track(new THREE.MeshStandardMaterial({ color: INK, roughness: 0.85 }));
-    const postGeo = track(new THREE.CylinderGeometry(0.07, 0.07, 1.75, 12));
+    const postGeo = track(new THREE.CylinderGeometry(0.11, 0.11, 2.0, 16));
     for (const z of [-4.15, 4.15]) {
       const post = new THREE.Mesh(postGeo, inkMat);
-      post.position.set(0, 0.87, z);
+      post.position.set(0, 1.0, z);
+      post.castShadow = true;
       scene.add(post);
     }
     const netMesh = new THREE.Mesh(
-      track(new THREE.PlaneGeometry(8.3, 1.5)),
-      track(new THREE.MeshBasicMaterial({ map: track(makeNetTexture()), transparent: true, side: THREE.DoubleSide, opacity: 0.9 })),
+      track(new THREE.PlaneGeometry(8.3, 1.75)),
+      track(new THREE.MeshBasicMaterial({ map: track(makeNetTexture()), transparent: true, side: THREE.DoubleSide, opacity: 0.95 })),
     );
     netMesh.rotation.y = Math.PI / 2;
-    netMesh.position.set(0, 0.83, 0);
+    netMesh.position.set(0, 0.88, 0);
     scene.add(netMesh);
-    const netBand = new THREE.Mesh(track(new THREE.BoxGeometry(0.05, 0.1, 8.3)), track(new THREE.MeshStandardMaterial({ color: CHALK, roughness: 0.7 })));
-    netBand.position.set(0, 1.6, 0);
+    const netBand = new THREE.Mesh(track(new THREE.BoxGeometry(0.09, 0.16, 8.5)), track(new THREE.MeshStandardMaterial({ color: CHALK, roughness: 0.6 })));
+    netBand.position.set(0, 1.78, 0);
+    netBand.castShadow = true;
     scene.add(netBand);
 
     // ── Paddles ──────────────────────────────────────────────────────────
     const buildPaddle = (side: 1 | -1) => {
       const swing = new THREE.Group(); // pivot at the grip — swings like a pendulum
       const face = new THREE.Group();
-      face.rotation.y = side * -Math.PI / 2; // blade looks across the net
+      // Turn each blade partway toward the viewer, not flat across the net —
+      // a full -90° yaw presents the camera with the thin edge (a "stick").
+      face.rotation.y = side * -0.92;
       swing.add(face);
       const blade = new THREE.Mesh(
-        track(new THREE.ExtrudeGeometry(roundedRectShape(1.25, 1.65, 0.55), { depth: 0.09, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 14 })),
-        [track(new THREE.MeshStandardMaterial({ color: INK, roughness: 0.8 })), track(new THREE.MeshStandardMaterial({ color: ORANGE, roughness: 0.6 }))],
+        track(new THREE.ExtrudeGeometry(roundedRectShape(1.4, 1.85, 0.6), { depth: 0.11, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.025, bevelSegments: 2, curveSegments: 14 })),
+        [track(new THREE.MeshStandardMaterial({ color: INK, roughness: 0.72 })), track(new THREE.MeshStandardMaterial({ color: ORANGE, roughness: 0.55 }))],
       );
-      blade.geometry.translate(0, 0, -0.045);
-      blade.position.y = 1.85;
-      const handle = new THREE.Mesh(track(new THREE.BoxGeometry(0.32, 0.85, 0.14)), inkMat);
-      handle.position.y = 0.95;
-      const grip = new THREE.Mesh(track(new THREE.CylinderGeometry(0.1, 0.1, 0.34, 12)), track(new THREE.MeshStandardMaterial({ color: ORANGE, roughness: 0.7 })));
+      blade.geometry.translate(0, 0, -0.055);
+      blade.position.y = 1.95;
+      blade.castShadow = true;
+      const handle = new THREE.Mesh(track(new THREE.BoxGeometry(0.34, 0.9, 0.16)), inkMat);
+      handle.position.y = 0.98;
+      handle.castShadow = true;
+      const grip = new THREE.Mesh(track(new THREE.CylinderGeometry(0.11, 0.11, 0.36, 12)), track(new THREE.MeshStandardMaterial({ color: ORANGE, roughness: 0.7 })));
       grip.position.y = 0.58;
+      grip.castShadow = true;
       face.add(blade, handle, grip);
       swing.position.set(side * 6.9, 0, 0);
       scene.add(swing);
@@ -230,17 +264,39 @@ export function PickleballScene() {
     // ── Ball ─────────────────────────────────────────────────────────────
     const ballTexture = track(makeBallTexture());
     const ball = new THREE.Mesh(
-      track(new THREE.SphereGeometry(0.42, 48, 32)),
-      track(new THREE.MeshStandardMaterial({ map: ballTexture, bumpMap: ballTexture, bumpScale: 0.6, roughness: 0.55 })),
+      track(new THREE.SphereGeometry(0.55, 48, 32)),
+      track(new THREE.MeshStandardMaterial({ map: ballTexture, bumpMap: ballTexture, bumpScale: 0.7, roughness: 0.5 })),
     );
+    ball.castShadow = true;
     scene.add(ball);
 
     const shadow = new THREE.Mesh(
-      track(new THREE.CircleGeometry(0.5, 32)),
-      track(new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.25, depthWrite: false })),
+      track(new THREE.CircleGeometry(0.6, 32)),
+      track(new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.28, depthWrite: false })),
     );
     shadow.rotation.x = -Math.PI / 2;
     scene.add(shadow);
+
+    // Motion trail: a fading string of ghosts behind the ball sells the flight
+    // even in a still frame.
+    const TRAIL = 10;
+    const trailGeo = track(new THREE.SphereGeometry(0.55, 12, 10));
+    const trail: THREE.Mesh[] = [];
+    for (let i = 0; i < TRAIL; i += 1) {
+      const ghost = new THREE.Mesh(
+        trailGeo,
+        track(new THREE.MeshBasicMaterial({ color: ORANGE, transparent: true, opacity: 0, depthWrite: false })),
+      );
+      scene.add(ghost);
+      trail.push(ghost);
+    }
+    const trailPositions: THREE.Vector3[] = Array.from({ length: TRAIL }, (_, i) => {
+      // Seed the trail spread behind the ball's reduced-motion rest point (t=1.0)
+      // so a frozen frame still shows a proper streak.
+      const seed = 1.0 - i * 0.045;
+      const seg = SEGMENTS.find((s) => seed >= s.from && seed < s.to) ?? SEGMENTS[0];
+      return seg.curve.getPoint(THREE.MathUtils.clamp((seed - seg.from) / (seg.to - seg.from), 0, 1));
+    });
 
     // ── Telegraphed play (dashed arcs + court markers) ───────────────────
     const dashedArc = (curve: THREE.QuadraticBezierCurve3) => {
@@ -316,10 +372,23 @@ export function PickleballScene() {
       ball.rotation.z += (t < 1.35 ? 4.4 : -4.4) * dt;
 
       shadow.position.set(ballPoint.x, 0.16, ballPoint.z);
-      const air = THREE.MathUtils.clamp(1 - (ballPoint.y - 0.56) / 2.8, 0, 1);
-      (shadow.material as THREE.MeshBasicMaterial).opacity = 0.08 + 0.2 * air;
-      const shadowScale = 0.75 + (1 - air) * 0.55;
+      const air = THREE.MathUtils.clamp(1 - (ballPoint.y - 0.7) / 3.0, 0, 1);
+      (shadow.material as THREE.MeshBasicMaterial).opacity = 0.08 + 0.22 * air;
+      const shadowScale = 0.7 + (1 - air) * 0.6;
       shadow.scale.set(shadowScale, shadowScale, 1);
+
+      // Shift the motion trail back one slot and park ghosts along it. Skipped
+      // on the frozen reduced-motion frame so the seeded streak survives.
+      if (dt > 0) {
+        for (let i = TRAIL - 1; i > 0; i -= 1) trailPositions[i].copy(trailPositions[i - 1]);
+        trailPositions[0].copy(ballPoint);
+      }
+      for (let i = 0; i < TRAIL; i += 1) {
+        trail[i].position.copy(trailPositions[i]);
+        const fade = 1 - i / TRAIL;
+        (trail[i].material as THREE.MeshBasicMaterial).opacity = 0.26 * fade * fade;
+        trail[i].scale.setScalar(0.35 + 0.65 * fade);
+      }
 
       for (const puff of puffs) {
         const material = puff.mesh!.material as THREE.MeshBasicMaterial;
