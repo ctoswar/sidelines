@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { scrollBus } from "@/lib/scroll-bus";
 
@@ -112,6 +112,24 @@ function roundedRectShape(width: number, height: number, radius: number) {
   return shape;
 }
 
+/** The scorebug's rally counter — polls the scene's strike channel. */
+function RallyBadge() {
+  const [count, setCount] = useState(41);
+  useEffect(() => {
+    let seen = scrollBus.rallyCount;
+    const id = window.setInterval(() => {
+      if (scrollBus.rallyCount !== seen) {
+        seen = scrollBus.rallyCount;
+        setCount(seen);
+      }
+    }, 240);
+    return () => window.clearInterval(id);
+  }, []);
+  // 41 doubles as the reduced-motion value: the racy part never runs, so the
+  // frozen diorama matches a "mid-rally" bug.
+  return <span className="rally-chip-count">{count}</span>;
+}
+
 export function PickleballScene() {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -139,11 +157,11 @@ export function PickleballScene() {
     wrapper.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    // A 3/4 broadcast angle from an elevated near corner, so the court reads
-    // with real perspective depth and both paddle faces catch the light.
+    // A 3/4 broadcast angle from an elevated near corner, tuned for the tall
+    // right-panel framing: court anchored low, sky fading into the paper.
     const camera = new THREE.PerspectiveCamera(40, 1.5, 0.1, 80);
-    const CAMERA_BASE = new THREE.Vector3(6.0, 5.0, 14.4);
-    const LOOK_AT = new THREE.Vector3(0.9, 1.0, -0.2);
+    const CAMERA_BASE = new THREE.Vector3(6.2, 5.2, 15.8);
+    const LOOK_AT = new THREE.Vector3(0.2, 1.0, -0.1);
     camera.position.copy(CAMERA_BASE);
     camera.lookAt(LOOK_AT);
 
@@ -457,7 +475,7 @@ export function PickleballScene() {
       if (width === 0 || height === 0) return;
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
-      camera.fov = Math.min(60, 40 + Math.max(0, 1.45 - camera.aspect) * 30);
+      camera.fov = Math.min(48, 40 + Math.max(0, 1.45 - camera.aspect) * 24);
       camera.updateProjectionMatrix();
     };
     const resizeObserver = new ResizeObserver(resize);
@@ -527,12 +545,13 @@ export function PickleballScene() {
         const boost = 1 + Math.min(Math.abs(scrollBus.velocity) / 16, 2.4);
         scrollBus.velocity *= 0.92;
         const next = (elapsed + dt * boost) % PERIOD;
-        if (process.env.NODE_ENV === "development") {
-          // Dev-only strike beacon — screenshot tooling syncs to paddle
-          // contact through it. The prod build dead-code-eliminates this.
-          if (Math.floor(next / (PERIOD / 2)) !== Math.floor(elapsed / (PERIOD / 2))) {
-            console.log("[scene] strike");
-          }
+        // A strike is any crossing of a half-period boundary (t=0 / t=1.35):
+        // it feeds both the scorebug counter and, in dev, a console beacon so
+        // screenshot tooling can time a capture to the hit flash.
+        const struck = Math.floor(next / (PERIOD / 2)) !== Math.floor(elapsed / (PERIOD / 2));
+        if (struck) {
+          scrollBus.rallyCount += 1;
+          if (process.env.NODE_ENV === "development") console.log("[scene] strike");
         }
         elapsed = next;
         renderFrame(elapsed, dt);
@@ -551,5 +570,13 @@ export function PickleballScene() {
     };
   }, []);
 
-  return <div ref={wrapperRef} className="events-hero-scene" aria-hidden="true" />;
+  return (
+    <div ref={wrapperRef} className="events-hero-scene" aria-hidden="true">
+      <div className="rally-chip">
+        <span className="rally-chip-dot" />
+        Live
+        <RallyBadge />
+      </div>
+    </div>
+  );
 }

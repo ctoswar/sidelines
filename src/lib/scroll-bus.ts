@@ -7,4 +7,6 @@ export const scrollBus = {
   velocity: 0,
   /** 0 → hero fully in view, 1 → hero fully scrolled past. */
   heroProgress: 0,
+  /** Paddle strikes since mount, seeded so the scorebug starts mid-rally. */
+  rallyCount: 41,
 };
