@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { scrollBus } from "@/lib/scroll-bus";
 
 // A tiny Three.js diorama for the events hero: two paddles rally a holey
 // pickleball over the net, forever. Palette is lifted straight from the
@@ -369,9 +370,16 @@ export function PickleballScene() {
 
     const renderFrame = (t: number, dt: number) => {
       updateRally(t, dt);
+      // Scroll feedback from Lenis/ScrollTrigger: the diorama turns away and
+      // recedes as the hero leaves, and the canvas fades into the paper.
+      const progress = scrollBus.heroProgress;
+      scene.rotation.y = progress * 0.28;
+      scene.position.y = progress * 1.1;
       camera.position.x += (CAMERA_BASE.x + pointerX * 0.8 - camera.position.x) * 0.05;
       camera.position.y += (CAMERA_BASE.y - pointerY * 0.4 - camera.position.y) * 0.05;
+      camera.position.z += (CAMERA_BASE.z + progress * 2.4 - camera.position.z) * 0.08;
       camera.lookAt(LOOK_AT);
+      renderer.domElement.style.opacity = String(THREE.MathUtils.clamp(1 - progress * 1.15, 0, 1));
       renderer.render(scene, camera);
     };
 
@@ -386,7 +394,10 @@ export function PickleballScene() {
         frame = requestAnimationFrame(tick);
         const dt = Math.min(clock.getDelta(), 0.05);
         if (!inView || document.hidden) return;
-        elapsed = (elapsed + dt) % PERIOD;
+        // Rally tempo follows scroll velocity (Lenis), decaying back to match pace.
+        const boost = 1 + Math.min(Math.abs(scrollBus.velocity) / 16, 2.4);
+        scrollBus.velocity *= 0.92;
+        elapsed = (elapsed + dt * boost) % PERIOD;
         renderFrame(elapsed, dt);
       };
       frame = requestAnimationFrame(tick);
