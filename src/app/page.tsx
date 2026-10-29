@@ -1,4 +1,5 @@
 import { EventsBrowser } from "@/components/events/events-browser";
+import { PickleballScene } from "@/components/events/pickleball-scene";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadCatalogue } from "@/server/events";
@@ -24,7 +25,7 @@ export default async function HomePage() {
         <div className="events-page-grid" aria-hidden="true" />
         <div className="relative mx-auto max-w-6xl px-5 pb-20 sm:px-8">
           <section className="events-hero">
-            <div>
+            <div className="events-hero-intro">
               <p className="events-eyebrow"><span />The global event desk <b>{"///"}</b> Season 26—27</p>
               <h1>Find your next<br /><em>court.</em></h1>
               <p className="events-hero-copy">Every pickleball tournament, league and live score in one place. Follow the matches that make the journey worth it.</p>
@@ -34,6 +35,7 @@ export default async function HomePage() {
               <p className="events-hero-note-text">The serve is only the beginning.</p>
               <div className="events-hero-stats"><span><b>{events.length}</b> events</span><span><b>{cityCount}</b> cities</span><span><b>{liveCount}</b> live now</span></div>
             </div>
+            <PickleballScene />
           </section>
           <EventsBrowser events={events} />
         </div>
