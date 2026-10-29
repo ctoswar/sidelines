@@ -25,6 +25,10 @@ const SEGMENTS = [
   { from: 2.15, to: 2.7, curve: new THREE.QuadraticBezierCurve3(v(3.2, 0.56, -0.55), v(4.6, 1.0, -0.3), v(5.5, 1.2, 0.3)) },
 ] as const;
 const BOUNCE_TIMES = [0.8, 2.15];
+// Paddle contact moments (right at t=0, left at t=1.35) and how long the
+// camera "hit punch" takes to settle afterwards.
+const STRIKE_TIMES = [0, 1.35];
+const PUNCH_DECAY = 0.34;
 
 function v(x: number, y: number, z: number) {
   return new THREE.Vector3(x, y, z);
@@ -332,6 +336,23 @@ export function PickleballScene() {
       puff.mesh = mesh;
     }
 
+    // ── Hit flashes (paddle contact) ─────────────────────────────────────
+    // A quick orange wavefront ring at each contact point, so the strike
+    // triggers a visible energy burst as the ball leaves the paddle.
+    const hitGeo = track(new THREE.RingGeometry(0.3, 0.38, 40));
+    const hitFlashes = [
+      { at: STRIKE_TIMES[0], x: 5.5, y: 1.2, z: 0.3 },
+      { at: STRIKE_TIMES[1], x: -5.5, y: 1.2, z: -0.3 },
+    ].map((hit) => {
+      const mesh = new THREE.Mesh(
+        hitGeo,
+        track(new THREE.MeshBasicMaterial({ color: ORANGE, transparent: true, opacity: 0, depthWrite: false })),
+      );
+      mesh.position.set(hit.x, hit.y, hit.z);
+      scene.add(mesh);
+      return { at: hit.at, mesh };
+    });
+
     // ── Rally animation ──────────────────────────────────────────────────
     const paddleAngle = (t: number, side: 1 | -1) => {
       // Contact happens at the end of each swing; recover, then idle-bob.
@@ -353,7 +374,7 @@ export function PickleballScene() {
     };
 
     const ballPoint = new THREE.Vector3();
-    const updateRally = (t: number, dt: number) => {
+    const updateRally = (t: number, dt: number, punch: number) => {
       const seg = SEGMENTS.find((s) => t >= s.from && t < s.to) ?? SEGMENTS[SEGMENTS.length - 1];
       const u = THREE.MathUtils.clamp((t - seg.from) / (seg.to - seg.from), 0, 1);
       seg.curve.getPoint(u, ballPoint);
@@ -368,8 +389,11 @@ export function PickleballScene() {
           ball.scale.set(1 + 0.22 * k, 1 - 0.3 * k, 1 + 0.22 * k);
         }
       }
-      ball.rotation.x += 0.7 * dt;
-      ball.rotation.z += (t < 1.35 ? 4.4 : -4.4) * dt;
+      // Spin spikes on every strike and settles with the punch — the hole
+      // pattern whips around the instant the ball leaves a paddle, then eases.
+      const spin = 1 + punch * 2.4;
+      ball.rotation.x += 0.7 * dt * spin;
+      ball.rotation.z += (t < 1.35 ? 4.4 : -4.4) * dt * spin;
 
       shadow.position.set(ballPoint.x, 0.16, ballPoint.z);
       const air = THREE.MathUtils.clamp(1 - (ballPoint.y - 0.7) / 3.0, 0, 1);
@@ -397,6 +421,18 @@ export function PickleballScene() {
           const k = age / 0.38;
           puff.mesh!.scale.setScalar(0.4 + k * 2.4);
           material.opacity = 0.5 * (1 - k);
+        } else {
+          material.opacity = 0;
+        }
+      }
+
+      for (const flash of hitFlashes) {
+        const material = flash.mesh.material as THREE.MeshBasicMaterial;
+        const age = (t - flash.at + PERIOD) % PERIOD;
+        if (age < 0.26) {
+          const k = age / 0.26;
+          flash.mesh.scale.setScalar(0.5 + k * 2.6);
+          material.opacity = 0.6 * (1 - k);
         } else {
           material.opacity = 0;
         }
@@ -437,17 +473,41 @@ export function PickleballScene() {
     );
     intersectionObserver.observe(wrapper);
 
+    // Smoothed camera base, kept separate from the final camera position so
+    // the contact punch can be applied directly without feeding back into
+    // the smoothing loop.
+    const camSmooth = CAMERA_BASE.clone();
+
     const renderFrame = (t: number, dt: number) => {
-      updateRally(t, dt);
+      // Nearest paddle strike inside the decay window; the punch curve snaps
+      // in hard and tails off quadratically.
+      let punch = 0;
+      let punchSide = 1;
+      for (const s of STRIKE_TIMES) {
+        const age = (t - s + PERIOD) % PERIOD;
+        if (age < PUNCH_DECAY) {
+          const k = Math.pow(1 - age / PUNCH_DECAY, 2);
+          if (k > punch) {
+            punch = k;
+            punchSide = s === 0 ? 1 : -1;
+          }
+        }
+      }
+      updateRally(t, dt, punch);
       // Scroll feedback from Lenis/ScrollTrigger: the diorama turns away and
       // recedes as the hero leaves, and the canvas fades into the paper.
       const progress = scrollBus.heroProgress;
       scene.rotation.y = progress * 0.28;
       scene.position.y = progress * 1.1;
-      camera.position.x += (CAMERA_BASE.x + pointerX * 0.8 - camera.position.x) * 0.05;
-      camera.position.y += (CAMERA_BASE.y - pointerY * 0.4 - camera.position.y) * 0.05;
-      camera.position.z += (CAMERA_BASE.z + progress * 2.4 - camera.position.z) * 0.08;
-      camera.lookAt(LOOK_AT);
+      camSmooth.x += (CAMERA_BASE.x + pointerX * 0.8 - camSmooth.x) * 0.05;
+      camSmooth.y += (CAMERA_BASE.y - pointerY * 0.4 - camSmooth.y) * 0.05;
+      camSmooth.z += (CAMERA_BASE.z + progress * 2.4 - camSmooth.z) * 0.08;
+      // Hit punch: a quick shift toward the striker and dolly-in, applied
+      // straight on top of the smoothed base so it reads as a snap, not a drift.
+      camera.position.copy(camSmooth);
+      camera.position.x += punchSide * punch * 0.35;
+      camera.position.z -= punch * 0.5;
+      camera.lookAt(LOOK_AT.x + punchSide * punch * 0.4, LOOK_AT.y + punch * 0.12, LOOK_AT.z);
       renderer.domElement.style.opacity = String(THREE.MathUtils.clamp(1 - progress * 1.15, 0, 1));
       renderer.render(scene, camera);
     };
@@ -466,7 +526,15 @@ export function PickleballScene() {
         // Rally tempo follows scroll velocity (Lenis), decaying back to match pace.
         const boost = 1 + Math.min(Math.abs(scrollBus.velocity) / 16, 2.4);
         scrollBus.velocity *= 0.92;
-        elapsed = (elapsed + dt * boost) % PERIOD;
+        const next = (elapsed + dt * boost) % PERIOD;
+        if (process.env.NODE_ENV === "development") {
+          // Dev-only strike beacon — screenshot tooling syncs to paddle
+          // contact through it. The prod build dead-code-eliminates this.
+          if (Math.floor(next / (PERIOD / 2)) !== Math.floor(elapsed / (PERIOD / 2))) {
+            console.log("[scene] strike");
+          }
+        }
+        elapsed = next;
         renderFrame(elapsed, dt);
       };
       frame = requestAnimationFrame(tick);
