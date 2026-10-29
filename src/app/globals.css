@@ -226,6 +226,20 @@ body {
   @keyframes desk-reveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 }
 
+/* Lenis smooth scroll (classes land on <html>). */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+/* While the GSAP scroll experience is active it owns motion — drop the CSS
+   load reveals so their fill mode can't fight ScrollTrigger transforms. */
+html.scroll-exp .events-hero > div:first-child,
+html.scroll-exp .events-hero-note,
+html.scroll-exp .events-hero-scene,
+html.scroll-exp .events-spotlight-grid > *,
+html.scroll-exp .event-row { animation: none; }
+
 /* The detail view inherits the same paper / ink system as the event index. */
 .event-detail-page {
   --desk-ink: #17231f;

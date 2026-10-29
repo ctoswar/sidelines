@@ -1,5 +1,6 @@
 import { EventsBrowser } from "@/components/events/events-browser";
 import { PickleballScene } from "@/components/events/pickleball-scene";
+import { ScrollExperience } from "@/components/events/scroll-experience";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadCatalogue } from "@/server/events";
@@ -20,6 +21,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <ScrollExperience />
       <SiteHeader />
       <main className="events-page">
         <div className="events-page-grid" aria-hidden="true" />
