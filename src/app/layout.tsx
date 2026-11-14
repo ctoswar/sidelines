@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import { NavProgress } from "@/components/ui/nav-progress";
+import { CustomCursor } from "@/components/ui/custom-cursor";
 import "./globals.css";
 
 const sans = DM_Sans({ subsets: ["latin"], variable: "--font-sans" });
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans antialiased">
         {children}
         <NavProgress />
+        <CustomCursor />
       </body>
     </html>
   );

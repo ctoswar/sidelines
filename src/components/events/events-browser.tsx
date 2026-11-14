@@ -94,12 +94,12 @@ export function EventsBrowser({ events }: { events: EventItem[] }) {
   return (
     <div>
       <div className="events-toolbar">
-        <label className="events-search">
+        <label className="events-search" data-cursor="Search">
           <SearchIcon />
           <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search event, city or country" aria-label="Search events" />
           <span className="events-search-shortcut">⌘ K</span>
         </label>
-        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Filters" className="events-filter-button">
+        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Filters" className="events-filter-button" data-cursor="Filter events">
           <FilterIcon />
           <span>Filter</span>
           {picked.length > 0 && <b>{picked.length}</b>}
@@ -137,12 +137,12 @@ export function EventsBrowser({ events }: { events: EventItem[] }) {
       <div className="events-list-heading">
         <div role="tablist" className="events-tabs">
           {(["upcoming", "past"] as Tab[]).map((t) => (
-            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={tab === t ? "is-active" : ""}>
+            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={tab === t ? "is-active" : ""} data-cursor="Switch tab" data-cursor-theme={tab === t ? "dark" : undefined}>
               {t === "upcoming" ? "Upcoming Events" : "Past Events"}
             </button>
           ))}
         </div>
-        <button onClick={() => setCalendar((c) => !c)} className="events-calendar-toggle">
+        <button onClick={() => setCalendar((c) => !c)} className="events-calendar-toggle" data-cursor={calendar ? "Back to list" : "Open calendar"}>
           <CalendarIcon />{calendar ? "List View" : "Calendar View"}
         </button>
       </div>

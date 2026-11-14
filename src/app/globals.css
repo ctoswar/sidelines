@@ -866,3 +866,59 @@ html.scroll-exp .event-row { animation: none; }
   .loading-dots i { animation: none; opacity: .7; }
   .nav-progress span { animation: none; width: 100%; }
 }
+
+/* Custom cursor: lime outline arrow + trailing context label — components/ui/custom-cursor.
+   Fine pointers only, and the JS only adds the gate class when the same media
+   query matched, so touch devices keep every native cursor untouched. Colors
+   reuse the site tokens (var(--desk-acid) / var(--desk-ink)) with the tokens'
+   own values as fallbacks for surfaces outside the scoped themes. */
+@media (hover: hover) and (pointer: fine) {
+  html.custom-cursor, html.custom-cursor * { cursor: none !important; }
+  /* Over text fields the JS adds `cursor-native` and the real caret pointer returns. */
+  html.custom-cursor.cursor-native, html.custom-cursor.cursor-native * { cursor: auto !important; }
+}
+
+.custom-cursor-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.custom-cursor-layer[data-visible="true"] { opacity: 1; }
+.custom-cursor-arrow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  filter: drop-shadow(0 1px 2.5px rgba(23, 35, 31, .35));
+}
+.custom-cursor-arrow path { stroke: var(--desk-acid, #c8ef70); fill: transparent; }
+.custom-cursor-arrow svg { display: block; transition: transform .18s ease; }
+.custom-cursor-layer[data-theme="dark"] .custom-cursor-arrow path { stroke: var(--desk-ink, #17231f); }
+.custom-cursor-pill { position: absolute; top: 0; left: 0; will-change: transform; }
+.custom-cursor-pill-inner {
+  display: block;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--desk-acid, #c8ef70);
+  color: var(--desk-ink, #17231f);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: .01em;
+  box-shadow: 0 3px 10px rgba(23, 35, 31, .2), 0 0 0 1px rgba(23, 35, 31, .07);
+  opacity: 0;
+  transform: scale(.5);
+  transform-origin: 0 0;
+  transition: opacity .18s ease, transform .18s ease, background-color .18s ease, color .18s ease;
+}
+.custom-cursor-pill-inner[data-show="true"] { opacity: 1; transform: scale(1); }
+.custom-cursor-pill-inner[data-theme="dark"] { background: var(--desk-ink, #17231f); color: var(--desk-acid, #c8ef70); }
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-cursor-layer, .custom-cursor-arrow svg, .custom-cursor-pill-inner { transition: none; }
+}

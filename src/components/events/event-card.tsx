@@ -32,7 +32,7 @@ export function EventCard({ event: e, showFeatured = false, variant = "row", ind
 
   if (variant === "spotlight") {
     return (
-      <Link href={`/events/${e.slug}`} className="event-spotlight event-spotlight-main" style={style}>
+      <Link href={`/events/${e.slug}`} className="event-spotlight event-spotlight-main" style={style} data-cursor="View event">
         <div className="event-spotlight-orbit" aria-hidden="true" />
         <div className="event-spotlight-topline"><span>{e.live ? "Live from the court" : "Featured event"}</span><span>0{index}</span></div>
         <div className="event-spotlight-mark" aria-hidden="true">{e.monogram}</div>
@@ -52,7 +52,7 @@ export function EventCard({ event: e, showFeatured = false, variant = "row", ind
 
   if (variant === "compact") {
     return (
-      <Link href={`/events/${e.slug}`} className="event-spotlight event-spotlight-compact" style={style}>
+      <Link href={`/events/${e.slug}`} className="event-spotlight event-spotlight-compact" style={style} data-cursor="View event">
         <div className="event-spotlight-topline"><span>{e.live ? "On now" : "Coming up"}</span><span>0{index}</span></div>
         <div className="event-compact-body">
           <div className="event-compact-mark" aria-hidden="true">{e.monogram}</div>

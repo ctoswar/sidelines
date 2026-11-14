@@ -255,6 +255,8 @@ export function AboutCta() {
               whileTap={reduced ? undefined : "tap"}
               onHoverStart={() => setHovered(true)}
               onHoverEnd={() => setHovered(false)}
+              data-cursor="Sign up free"
+              data-cursor-theme="dark"
               className="btn relative flex w-full items-center justify-center gap-1.5 overflow-hidden bg-white px-7 py-3 font-bold text-[#14213d] md:w-auto"
             >
               <motion.span
