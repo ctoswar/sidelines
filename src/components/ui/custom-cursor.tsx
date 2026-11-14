@@ -143,10 +143,15 @@ export function CustomCursor() {
       }
 
       const labeled = target.closest("[data-cursor]");
+      // The theme must always reflect the current target — a dark-theme label
+      // left behind would keep the arrow ink-on-ink against the dark section
+      // it was hovering (e.g. the about CTA band), making it look invisible.
+      const dark = labeled !== null && labeled.closest('[data-cursor-theme="dark"]') !== null;
+      const nextTheme = dark ? "dark" : "lime";
+      if (layer.dataset.theme !== nextTheme) layer.dataset.theme = nextTheme;
       if (labeled) {
         const text = labeled.getAttribute("data-cursor") ?? "";
         if (pillText.textContent !== text) pillText.textContent = text;
-        layer.dataset.theme = labeled.closest('[data-cursor-theme="dark"]') ? "dark" : "lime";
         if (!pillOn) snapPill();
         pillOn = true;
         pillInner.dataset.show = "true";
