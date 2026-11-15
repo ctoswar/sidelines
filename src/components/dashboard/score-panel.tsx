@@ -15,8 +15,8 @@ interface State {
   timeouts: Record<Side, number>;
   log: string[];
   stack: Side[];
+  /** Explicit offline switch: points are kept on this device until reconnect. */
   offline: boolean;
-  queued: number;
   secs: number;
   running: boolean;
 }
@@ -36,27 +36,29 @@ function makeInitial(scores: [number, number]): State {
     // the organizer wizard and this panel used to disagree.
     timeouts: { a: SCORING.timeoutsPerGame, b: SCORING.timeoutsPerGame },
     log: [], stack: [],
-    offline: false, queued: 0, secs: 0, running: false,
+    offline: false, secs: 0, running: false,
   };
 }
 
-// In the real app each action becomes a game_events row (queued locally when offline).
+// The offline switch is honest: nothing is transmitted while it is on, and
+// the final result posts when the connection is back (the submit effect
+// re-runs on the flip). No phantom queue counter — that used to claim
+// "synced" without sending anything.
 function makeReducer(names: [string, string]) {
   return function reducer(s: State, a: Action): State {
-    const queued = (n = 1) => (s.offline ? s.queued + n : s.queued);
     switch (a.type) {
       case "point": {
         const score = { ...s.score, [a.side]: s.score[a.side] + 1 };
-        return { ...s, score, stack: [...s.stack, a.side], queued: queued(), log: [`Point for ${names[a.side === "a" ? 0 : 1]}  ${score.a}–${score.b}`, ...s.log] };
+        return { ...s, score, stack: [...s.stack, a.side], log: [`Point for ${names[a.side === "a" ? 0 : 1]}  ${score.a}–${score.b}`, ...s.log] };
       }
       case "timeout":
-        return { ...s, timeouts: { ...s.timeouts, [a.side]: s.timeouts[a.side] - 1 }, queued: queued(), log: [`Timeout ${names[a.side === "a" ? 0 : 1]}`, ...s.log] };
+        return { ...s, timeouts: { ...s.timeouts, [a.side]: s.timeouts[a.side] - 1 }, log: [`Timeout ${names[a.side === "a" ? 0 : 1]}`, ...s.log] };
       case "undo": {
         const side = s.stack[s.stack.length - 1];
         if (!side) return s;
-        return { ...s, score: { ...s.score, [side]: s.score[side] - 1 }, stack: s.stack.slice(0, -1), queued: queued(), log: ["Undid last point", ...s.log] };
+        return { ...s, score: { ...s.score, [side]: s.score[side] - 1 }, stack: s.stack.slice(0, -1), log: ["Undid last point", ...s.log] };
       }
-      case "offline": return { ...s, offline: !s.offline, queued: s.offline ? 0 : s.queued };
+      case "offline": return { ...s, offline: !s.offline };
       case "pause": return { ...s, running: !s.running };
       case "tick": return s.running ? { ...s, secs: s.secs + 1 } : s;
       case "reset": return makeInitial([0, 0]);
@@ -118,7 +120,10 @@ export function ScorePanel({ teams, field, scheduleLabel, target = SCORING.targe
   useEffect(() => {
     // Keyed off `won`, not `finished`: a game that arrived already final must
     // not re-submit just because the panel loaded with its recorded score.
-    if (!won || !gameId) return;
+    // `s.offline` is in the deps on purpose: scoring the last point while
+    // offline means the submit never ran — flipping back online re-runs this
+    // effect and posts the result for real.
+    if (!won || !gameId || s.offline) return;
     // Fire once per finished score; the reducer can't change the score after
     // finish without an undo, and the endpoint upserts anyway.
     if (submitting.current) return;
@@ -128,10 +133,9 @@ export function ScorePanel({ teams, field, scheduleLabel, target = SCORING.targe
         show(error instanceof Error ? error.message : "Could not save the final score");
       })
       .finally(() => { submitting.current = false; });
-  }, [won, gameId, s.score.a, s.score.b, token, show]);
+  }, [won, gameId, s.score.a, s.score.b, s.offline, token, show]);
 
   const toggleOffline = () => {
-    if (s.offline && s.queued) show(`${s.queued} events synced`);
     dispatch({ type: "offline" });
   };
 
@@ -162,7 +166,7 @@ export function ScorePanel({ teams, field, scheduleLabel, target = SCORING.targe
           <div className="score-panel-head flex items-center justify-between bg-field px-4 py-3 text-sm text-white">
             <span className="font-bold">{scheduleLabel ?? `${field} · Game to ${target}`}</span>
             <button onClick={toggleOffline} className={`rounded px-2 py-1 ${s.offline ? "bg-flag" : "bg-white/15"}`}>
-              {s.offline ? `Offline · ${s.queued} queued` : "Online"}
+              {s.offline ? "Offline — result sends on reconnect" : "Online"}
             </button>
           </div>
         )}
@@ -176,7 +180,7 @@ export function ScorePanel({ teams, field, scheduleLabel, target = SCORING.targe
               {publicMode && (
                 <button onClick={toggleOffline} className={`score-connection ${s.offline ? "is-offline" : ""}`}>
                   <span className="score-connection-dot" aria-hidden="true" />
-                  {s.offline ? `Offline · ${s.queued}` : "Online"}
+                  {s.offline ? "Offline — sends on reconnect" : "Online"}
                 </button>
               )}
               {isFinal ? (
