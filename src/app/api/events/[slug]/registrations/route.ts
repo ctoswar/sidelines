@@ -20,7 +20,7 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
-import { eventExists } from "@/server/events";
+import { eventExists, loadEvent } from "@/server/events";
 import { canManageEvent } from "@/server/ownership";
 import { registerSchema } from "@/lib/validators/registration";
 import { isDivisionId, type DivisionId } from "@/lib/divisions";
@@ -109,6 +109,17 @@ export async function POST(
     );
   }
   const { division } = parsed.data;
+
+  // Registration closes when the event does: `status` is date-derived (see
+  // src/lib/event-state.ts), so a finished event stops accepting entries even
+  // if a stale client still renders the button.
+  const event = await loadEvent(slug);
+  if (event && event.status !== "upcoming") {
+    return NextResponse.json(
+      { message: "Registration for this event has closed." },
+      { status: 409 },
+    );
+  }
 
   const existing = await myRegistration(slug, user.id);
 
