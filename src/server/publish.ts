@@ -18,6 +18,7 @@ import { eq } from "drizzle-orm";
 import type { Database } from "./db";
 import * as t from "./schema";
 import { describeRange } from "@/lib/tournament-meta";
+import { displayPlace } from "@/lib/events-data";
 
 /** The transaction handle the create route already runs under. */
 export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
@@ -136,7 +137,11 @@ export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promi
   const code = place?.code ?? "";
   const offset = place?.offset ?? 0;
   const courts = input.courts ?? 1;
-  const city = input.city.trim();
+  // Stored prose (the about text, the "Local time" fact, the venue address)
+  // is written here once and printed verbatim everywhere, so the city is
+  // normalized at write time — free-text input like "imus" read as a typo on
+  // every card otherwise.
+  const city = displayPlace(input.city.trim());
   const country = input.country.trim();
   const range = describeRange(startDate, endDate) || startDate;
   const divisions = (input.divisions?.length ? input.divisions : ["Open"]).map((d) => d.trim()).filter(Boolean);

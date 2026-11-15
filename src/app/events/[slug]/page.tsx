@@ -6,7 +6,7 @@ import { EventShell } from "@/components/events/event-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadEventDetail } from "@/server/events";
-import { formatRange } from "@/lib/events-data";
+import { displayPlace, formatRange } from "@/lib/events-data";
 
 // Phase 6: the page renders from Postgres per request (the same loadEventDetail
 // the API serves) instead of the static modules it was prerendered from. No
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!detail) notFound();
   const { event, venue } = detail;
   const description =
-    `${event.name} — ${formatRange(event.start, event.end)} in ${event.city}, ${event.country}. ` +
+    `${event.name} — ${formatRange(event.start, event.end)} in ${displayPlace(event.city)}, ${event.country}. ` +
     `${venue.name} · ${detail.fields} courts · Divisions: ${detail.facts.find((f) => f.label === "Divisions")?.value ?? "see event page"}.`;
   return {
     title: `${event.name} – Sidelines`,
@@ -63,7 +63,7 @@ function sportsEventJsonLd(d: Awaited<ReturnType<typeof detailFor>>): string {
       name: d.venue.name,
       address: {
         "@type": "PostalAddress",
-        addressLocality: d.event.city,
+        addressLocality: displayPlace(d.event.city),
         addressCountry: d.event.code || d.event.country,
       },
     },
