@@ -114,6 +114,8 @@ function roundedRectShape(width: number, height: number, radius: number) {
 
 /** The scorebug's rally counter — polls the scene's strike channel. */
 function RallyBadge() {
+  // Seeded mid-rally so the frozen diorama matches a "mid-rally" bug; it
+  // counts exchanges of the hero animation, not live matches on the site.
   const [count, setCount] = useState(41);
   useEffect(() => {
     let seen = scrollBus.rallyCount;
@@ -574,7 +576,7 @@ export function PickleballScene() {
     <div ref={wrapperRef} className="events-hero-scene" aria-hidden="true">
       <div className="rally-chip">
         <span className="rally-chip-dot" />
-        Live
+        Rally
         <RallyBadge />
       </div>
     </div>
