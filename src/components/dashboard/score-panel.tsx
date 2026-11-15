@@ -4,6 +4,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/dashboard/use-toast";
 import { submitGameResult } from "@/lib/game-results";
+import { SCORING } from "@/lib/scoring";
 import type { Side } from "@/types";
 
 const clock = (secs: number) =>
@@ -30,7 +31,11 @@ type Action =
 
 function makeInitial(scores: [number, number]): State {
   return {
-    score: { a: scores[0], b: scores[1] }, timeouts: { a: 1, b: 1 }, log: [], stack: [],
+    score: { a: scores[0], b: scores[1] },
+    // Per-side timeout count comes from the scoring config, not a literal —
+    // the organizer wizard and this panel used to disagree.
+    timeouts: { a: SCORING.timeoutsPerGame, b: SCORING.timeoutsPerGame },
+    log: [], stack: [],
     offline: false, queued: 0, secs: 0, running: false,
   };
 }
@@ -92,7 +97,7 @@ export interface ScorePanelProps {
   isFinal?: boolean;
 }
 
-export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2, label, role, keeper, publicMode = false, gameId, token, initialScore, isFinal = false }: ScorePanelProps) {
+export function ScorePanel({ teams, field, scheduleLabel, target = SCORING.target, winBy = SCORING.winBy, label, role, keeper, publicMode = false, gameId, token, initialScore, isFinal = false }: ScorePanelProps) {
   const router = useRouter();
   const { show, node } = useToast();
   const [s, dispatch] = useReducer(makeReducer(teams), initialScore ?? ([0, 0] as [number, number]), makeInitial);
@@ -164,7 +169,9 @@ export function ScorePanel({ teams, field, scheduleLabel, target = 11, winBy = 2
         <div className="score-panel-clock bg-field pb-3 text-center text-sm text-white">
           <div className="score-clock-row">
              <span>Match clock <b className="score-clock tabular-nums">{clock(s.secs)}</b></span>
-             <span className="score-rule">First to {target} · win by {winBy}</span>
+             <span className="score-rule">
+              {SCORING.mode === "rally" ? "Rally scoring" : "Side-out scoring"} · First to {target} · win by {winBy}
+            </span>
             <span className="score-clock-actions">
               {publicMode && (
                 <button onClick={toggleOffline} className={`score-connection ${s.offline ? "is-offline" : ""}`}>

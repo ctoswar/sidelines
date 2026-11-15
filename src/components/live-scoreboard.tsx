@@ -4,14 +4,15 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { AnimatedNumber } from "@/components/motion/primitives";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
+import { SCORING } from "@/lib/scoring";
 
 type Side = "a" | "b";
-const TARGET = 11;
+const TARGET = SCORING.target;
 // The demo clock starts at 12:40 and ticks down once per second after mount.
 const START_CLOCK = 12 * 60 + 40;
 
 const isFinal = (s: { a: number; b: number }) =>
-  (s.a >= TARGET && s.a - s.b >= 2) || (s.b >= TARGET && s.b - s.a >= 2);
+  (s.a >= TARGET && s.a - s.b >= SCORING.winBy) || (s.b >= TARGET && s.b - s.a >= SCORING.winBy);
 
 export function LiveScoreboard() {
   const [score, setScore] = useState({ a: 8, b: 6 });
@@ -54,7 +55,7 @@ export function LiveScoreboard() {
           />
           Live · Court 3
         </span>
-        <span className="text-white/70">First to {TARGET} · win by 2</span>
+        <span className="text-white/70">{SCORING.mode === "rally" ? "Rally scoring" : "Side-out scoring"} · First to {TARGET} · win by {SCORING.winBy}</span>
       </div>
 
       <div className="grid grid-cols-2 divide-x divide-white/15">
