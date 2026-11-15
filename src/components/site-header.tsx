@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion, type Variants } from "motion/react";
 import { homeFor, signOut, useSession } from "@/lib/auth";
 import { DUR, EASE } from "@/lib/motion";
@@ -23,6 +25,12 @@ const MotionLink = motion.create(Link);
 export function SiteHeader() {
   const session = useSession();
   const reduced = !!usePrefersReducedMotion();
+  const pathname = usePathname();
+  // Mobile keeps the auth buttons visible and folds Events/About into a
+  // disclosure — without it, a phone had no path to /about at all (the nav
+  // links were `hidden … sm:inline` and the footer has no About link).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
 
   // Staying put: everything here is public. Only the header flips back.
   const logOut = () => {
@@ -67,6 +75,22 @@ export function SiteHeader() {
           <MotionLink href="/about" variants={itemVariants} className="hidden px-3 py-2 text-white/80 hover:text-white sm:inline">
             About
           </MotionLink>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-controls="site-mobile-menu"
+            className="grid h-11 w-11 place-items-center rounded-md border border-white/30 sm:hidden"
+          >
+            <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
+              {menuOpen ? (
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              ) : (
+                <path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              )}
+            </svg>
+          </button>
           {session ? (
             <>
               <motion.span
@@ -113,6 +137,30 @@ export function SiteHeader() {
           )}
         </motion.nav>
       </div>
+      {menuOpen && (
+        <nav
+          id="site-mobile-menu"
+          aria-label="Site"
+          className="border-t border-white/15 px-5 pb-3 sm:hidden"
+        >
+          {[
+            { href: "/", label: "Events" },
+            { href: "/about", label: "About" },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={closeMenu}
+              aria-current={pathname === item.href ? "page" : undefined}
+              className={`flex min-h-11 items-center border-b border-white/10 py-3 text-sm font-medium last:border-b-0 ${
+                pathname === item.href ? "text-white" : "text-white/80"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </motion.header>
   );
 }
