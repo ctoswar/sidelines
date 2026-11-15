@@ -9,6 +9,7 @@ import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { eventExists } from "@/server/events";
+import { canManageEvent } from "@/server/ownership";
 
 export async function DELETE(
   _request: Request,
@@ -23,6 +24,11 @@ export async function DELETE(
   }
   if (!(await eventExists(slug))) {
     return NextResponse.json({ message: "Event not found." }, { status: 404 });
+  }
+  // Removing an entrant is a write on another person's registration: only the
+  // event's own organizer (or an admin) may do it.
+  if (!(await canManageEvent(user, slug))) {
+    return NextResponse.json({ message: "This event is not yours to manage." }, { status: 403 });
   }
 
   const deleted = await db

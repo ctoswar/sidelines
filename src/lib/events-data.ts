@@ -33,3 +33,10 @@ export const monthShort = (iso: string) => fmt(iso, { month: "short" }).toUpperC
 export const monthLabel = (iso: string) => fmt(iso, { month: "long", year: "numeric" });
 
 export const getEvent = (slug: string) => events.find((e) => e.slug === slug);
+
+/**
+ * Display form for a place name: stored cities come from free-text input and
+ * seeded data ("imus"), and printing them raw on cards reads as a typo.
+ */
+export const displayPlace = (place: string) =>
+  place.replace(/\b\p{L}[\p{L}']*/gu, (word) => word[0].toUpperCase() + word.slice(1));

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { EventItem } from "@/types";
-import { dayOf, formatRange, monthShort } from "@/lib/events-data";
+import { dayOf, displayPlace, formatRange, monthShort } from "@/lib/events-data";
 import { AvatarStack } from "./avatar-stack";
 import { CalendarIcon } from "./icons";
 
@@ -39,7 +39,7 @@ export function EventCard({ event: e, showFeatured = false, variant = "row", ind
         <div className="event-spotlight-copy">
           <p className="event-kicker">{e.tags[0]} / {e.tags[1]}</p>
           <h3>{e.name}</h3>
-          <p className="event-spotlight-location">{e.city}, {e.country}</p>
+          <p className="event-spotlight-location">{displayPlace(e.city)}, {e.country}</p>
           <div className="event-spotlight-bottom">
             <span>{formatRange(e.start, e.end)}</span>
             <span className="event-arrow">↗</span>
@@ -59,7 +59,7 @@ export function EventCard({ event: e, showFeatured = false, variant = "row", ind
           <div className="min-w-0">
             <p className="event-kicker">{e.tags[0]} / {e.tags[1]}</p>
             <h3>{e.name}</h3>
-            <p className="event-spotlight-location">{e.city}, {e.country}</p>
+            <p className="event-spotlight-location">{displayPlace(e.city)}, {e.country}</p>
           </div>
         </div>
         <div className="event-spotlight-bottom"><span>{formatRange(e.start, e.end)}</span><span className="event-arrow">↗</span></div>
@@ -74,7 +74,7 @@ export function EventCard({ event: e, showFeatured = false, variant = "row", ind
       <div className="event-row-mark" aria-hidden="true">{e.hasLogo ? e.monogram : <><strong>{dayOf(e.start)}</strong><span>{monthShort(e.start)}</span></>}</div>
       <div className="event-row-content">
         <div className="event-row-title"><h3>{e.name}</h3>{e.live && <span className="event-row-live"><span className="pulse" />Live</span>}</div>
-        <p className="event-row-meta"><CalendarIcon />{formatRange(e.start, e.end)} <span className="event-meta-separator">/</span> {e.city}, {e.country}</p>
+        <p className="event-row-meta"><CalendarIcon />{formatRange(e.start, e.end)} <span className="event-meta-separator">/</span> {displayPlace(e.city)}, {e.country}</p>
         <div className="event-row-tags">{e.tags.map((t) => <span key={t}>{t}</span>)}</div>
         {!showFeatured && <AvatarStack count={e.teams} />}
       </div>

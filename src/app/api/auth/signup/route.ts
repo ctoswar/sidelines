@@ -11,9 +11,10 @@
 // profile behind it.
 
 import { NextResponse } from "next/server";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { auth, type AppRole } from "@/server/auth";
 import { db } from "@/server/db";
+import { allow, requestIp } from "@/server/rate-limit";
 import * as t from "@/server/schema";
 import {
   organizerSignupSchema,
@@ -63,6 +64,16 @@ function organizationRow(ownerUserId: string, body: PlayerBody) {
 }
 
 export async function POST(request: Request) {
+  // Account creation does password hashing and several queries; cap attempts
+  // per client so the route cannot be hammered for CPU or enumeration. Five
+  // signups per ten minutes is far above any real organizer's needs.
+  if (!allow(`signup:${requestIp(request)}`, 5, 10 * 60_000)) {
+    return NextResponse.json(
+      { ok: false, message: "Too many attempts. Try again later." },
+      { status: 429 },
+    );
+  }
+
   let body: PlayerBody;
   try {
     body = await request.json();
@@ -110,9 +121,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Better Auth creates the credential + a session cookie. `username`/`role`
-  // are additionalFields (see src/server/auth.ts); the generated input type
-  // only describes built-in columns, hence the cast.
+  // Better Auth creates the credential + a session cookie. `username` is the
+  // only client-writable additional field (see src/server/auth.ts) — `role`
+  // is `input: false`, so the account is always created as a player and the
+  // organizer promotion below is the one server-side write. The generated
+  // input type only describes built-in columns, hence the cast.
   type SignUpBody = NonNullable<Parameters<typeof auth.api.signUpEmail>[0]>["body"];
   const created = await auth.api.signUpEmail({
     body: {
@@ -120,7 +133,6 @@ export async function POST(request: Request) {
       password: String(body.password),
       name: String(body.name),
       username,
-      role,
     } as SignUpBody,
   });
 
@@ -132,6 +144,12 @@ export async function POST(request: Request) {
   }
 
   const userId = created.user.id;
+
+  // Promote the freshly created account to organizer here, server-side. The
+  // public Better Auth endpoints can never set this field themselves.
+  if (role === "organizer") {
+    await db.update(t.user).set({ role }).where(eq(t.user.id, userId));
+  }
 
   if (role === "player") {
     await db.insert(t.playerProfiles).values(playerProfileRow(userId, body));

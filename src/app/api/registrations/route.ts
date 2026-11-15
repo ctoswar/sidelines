@@ -12,7 +12,8 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { eventSelection } from "@/server/events";
-import { isDivisionId } from "@/lib/divisions";
+import { isRegistrationDivisionId } from "@/lib/divisions";
+import { deriveEventState } from "@/lib/event-state";
 
 export async function GET() {
   const user = await getServerSessionUser();
@@ -37,11 +38,16 @@ export async function GET() {
 
   // role is null when the account is gone (user_id set null on delete);
   // division is null only on rows from before the division picker shipped.
+  // status/live are date-derived so a finished event stops showing "Live".
   return NextResponse.json({
     registrations: rows.map((r) => ({
       ...r,
       role: r.role ?? null,
-      division: isDivisionId(r.division) ? r.division : null,
+      division: isRegistrationDivisionId(r.division) ? r.division : null,
+      event: {
+        ...r.event,
+        ...deriveEventState(r.event.start, r.event.end, r.event.live),
+      },
     })),
   });
 }

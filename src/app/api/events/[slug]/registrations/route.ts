@@ -20,9 +20,10 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
-import { eventExists } from "@/server/events";
+import { eventExists, loadEvent } from "@/server/events";
+import { canManageEvent } from "@/server/ownership";
 import { registerSchema } from "@/lib/validators/registration";
-import { isDivisionId, type DivisionId } from "@/lib/divisions";
+import { isRegistrationDivisionId, type RegistrationDivisionId } from "@/lib/divisions";
 
 /** Rows with the registrant's account role joined — the hub's Role column. */
 async function loadRegistrations(slug: string) {
@@ -41,7 +42,7 @@ async function loadRegistrations(slug: string) {
     .orderBy(desc(t.registrations.at));
   // role is null when the account is gone (user_id set null on delete);
   // division is null only on rows from before the division picker shipped.
-  return rows.map((r) => ({ ...r, role: r.role ?? null, division: isDivisionId(r.division) ? r.division : null }));
+  return rows.map((r) => ({ ...r, role: r.role ?? null, division: isRegistrationDivisionId(r.division) ? r.division : null }));
 }
 
 async function countFor(slug: string): Promise<number> {
@@ -53,7 +54,7 @@ async function countFor(slug: string): Promise<number> {
 }
 
 /** The signed-in user's registration row for this event, or null. */
-async function myRegistration(slug: string, userId: string | null): Promise<{ id: string; division: DivisionId | null } | null> {
+async function myRegistration(slug: string, userId: string | null): Promise<{ id: string; division: RegistrationDivisionId | null } | null> {
   if (!userId) return null;
   const [row] = await db
     .select({ id: t.registrations.id, division: t.registrations.division })
@@ -61,7 +62,7 @@ async function myRegistration(slug: string, userId: string | null): Promise<{ id
     .where(and(eq(t.registrations.eventSlug, slug), eq(t.registrations.userId, userId)))
     .limit(1);
   if (!row) return null;
-  return { id: row.id, division: isDivisionId(row.division) ? row.division : null };
+  return { id: row.id, division: isRegistrationDivisionId(row.division) ? row.division : null };
 }
 
 export async function GET(
@@ -79,8 +80,10 @@ export async function GET(
     myRegistration(slug, user?.id ?? null),
   ]);
 
+  // The inbox (names + emails) is PII: only the event's own organizer — or an
+  // admin — may read it, not every organizer account on the site.
   const registrations =
-    user?.role === "organizer" ? await loadRegistrations(slug) : null;
+    user && (await canManageEvent(user, slug)) ? await loadRegistrations(slug) : null;
 
   return NextResponse.json({ count, registered: Boolean(mine), division: mine?.division ?? null, registrations });
 }
@@ -101,11 +104,22 @@ export async function POST(
   const parsed = registerSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
-      { message: parsed.error.issues[0]?.message ?? "Pick one of the three divisions." },
+      { message: parsed.error.issues[0]?.message ?? "Pick one of the event's divisions." },
       { status: 400 },
     );
   }
   const { division } = parsed.data;
+
+  // Registration closes when the event does: `status` is date-derived (see
+  // src/lib/event-state.ts), so a finished event stops accepting entries even
+  // if a stale client still renders the button.
+  const event = await loadEvent(slug);
+  if (event && event.status !== "upcoming") {
+    return NextResponse.json(
+      { message: "Registration for this event has closed." },
+      { status: 409 },
+    );
+  }
 
   const existing = await myRegistration(slug, user.id);
 

@@ -12,6 +12,7 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import type { EventItem, OpenTournament } from "@/types";
 import { parseFinalScore } from "@/lib/game-results";
+import { deriveEventState } from "@/lib/event-state";
 import { teamColor, poolSlotLabel, bracketFeedLabel, type Crew, type EventDetail, type MatchInfo, type Mvp, type PlayerStat, type PoolRow, type TeamInfo } from "@/lib/event-detail";
 import { timeFromLabel, minutesFromTime, labelFromMinutes, SLOT_MINUTES } from "@/lib/schedule-config";
 import { loadPool } from "@/server/pool";
@@ -43,6 +44,10 @@ export const eventSelection = {
 
 /** `events` row → the EventItem shape every consumer already speaks. */
 export function eventRowToItem(row: typeof t.events.$inferSelect): EventItem {
+  // status/live are derived from the dates so stale stored columns cannot
+  // list a finished event as "upcoming" or count it as "live now" (see
+  // src/lib/event-state.ts).
+  const state = deriveEventState(row.startDate, row.endDate, row.live);
   return {
     slug: row.slug,
     name: row.name,
@@ -52,9 +57,9 @@ export function eventRowToItem(row: typeof t.events.$inferSelect): EventItem {
     country: row.country,
     code: row.code,
     tags: [...row.tags],
-    status: row.status,
+    status: state.status,
     featured: row.featured,
-    live: row.live,
+    live: state.live,
     teams: row.teamCount,
     color: row.color,
     monogram: row.monogram,

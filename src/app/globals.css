@@ -10,7 +10,8 @@
   --line: #d9ddd2;
   --brand: #1f6b4a;
   --onbrand: #ffffff;
-  --flag: #e8590c;
+  /* Flag/accent text on paper backgrounds — 4.5:1 for small copy. */
+  --flag: #c2410c;
   --field: #174f37;
 }
 
@@ -33,6 +34,28 @@ body {
   color: var(--fg);
 }
 
+/* Legal + contact pages: the paper desk system on its own route. */
+.legal-page {
+  --desk-ink: #17231f;
+  --desk-muted: #5f6a64;
+  --desk-paper: #f4f0e7;
+  --desk-line: #d2cabe;
+  --desk-orange: #c2410c;
+  min-height: calc(100vh - 72px);
+  background: var(--desk-paper);
+  color: var(--desk-ink);
+}
+.legal-page-inner { margin: 0 auto; max-width: 46rem; padding: 3.5rem 1.25rem 5rem; }
+.legal-kicker { color: var(--desk-orange); font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.legal-page h1 { font-family: var(--font-score), sans-serif; font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -.02em; line-height: 1; margin-top: .75rem; }
+.legal-intro { color: var(--desk-muted); font-size: 1.05rem; line-height: 1.55; margin-top: 1rem; }
+.legal-body { display: grid; gap: 1.75rem; margin-top: 2.5rem; }
+.legal-body h2 { font-family: var(--font-score), sans-serif; font-size: 1.5rem; font-weight: 700; }
+.legal-body p, .legal-body li { color: var(--desk-ink); line-height: 1.6; }
+.legal-body ul { display: grid; gap: .5rem; margin-top: .5rem; padding-left: 1.1rem; list-style: disc; }
+.legal-body a { color: var(--desk-orange); text-decoration: underline; text-underline-offset: 2px; }
+.legal-body a:hover { color: var(--desk-ink); }
+
 :focus-visible {
   outline: 3px solid var(--flag);
   outline-offset: 2px;
@@ -52,12 +75,12 @@ body {
 /* Events desk — an editorial, matchday-inspired treatment for the public event index. */
 .events-page {
   --desk-ink: #17231f;
-  --desk-muted: #69746e;
+  --desk-muted: #5f6a64;
   --desk-paper: #f4f0e7;
   --desk-paper-deep: #e8e1d4;
   --desk-line: #d2cabe;
   --desk-acid: #c8ef70;
-  --desk-orange: #ef653d;
+  --desk-orange: #c2410c;
   position: relative;
   min-height: calc(100vh - 72px);
   overflow: hidden;
@@ -291,19 +314,19 @@ html.scroll-exp .event-row { animation: none; }
 /* The detail view inherits the same paper / ink system as the event index. */
 .event-detail-page {
   --desk-ink: #17231f;
-  --desk-muted: #69746e;
+  --desk-muted: #5f6a64;
   --desk-paper: #f4f0e7;
   --desk-line: #d2cabe;
   --desk-acid: #c8ef70;
-  --desk-orange: #ef653d;
+  --desk-orange: #c2410c;
   --bg: #f4f0e7;
   --fg: #17231f;
-  --muted: #69746e;
+  --muted: #5f6a64;
   --card: #fffdfa;
   --line: #d2cabe;
   --brand: #1f6b4a;
   --onbrand: #f4f0e7;
-  --flag: #ef653d;
+  --flag: #c2410c;
   --field: #17231f;
   position: relative;
   overflow: hidden;
@@ -353,7 +376,7 @@ html.scroll-exp .event-row { animation: none; }
 .event-detail-cta { position: relative; overflow: hidden; border: 1px solid var(--desk-line); background: var(--desk-acid); }
 .event-detail-cta::after { position: absolute; right: -2rem; bottom: -5rem; width: 14rem; height: 14rem; border: 1px solid rgba(23,35,31,.22); border-radius: 50%; content: ""; }
 .event-detail-cta > * { position: relative; z-index: 1; }
-.events-footer { --desk-paper: #f4f0e7; --desk-ink: #17231f; --desk-muted: #69746e; max-width: none; padding-right: max(1.25rem, calc((100vw - 72rem) / 2)); padding-left: max(1.25rem, calc((100vw - 72rem) / 2)); background: var(--desk-paper); color: var(--desk-muted); }
+.events-footer { --desk-paper: #f4f0e7; --desk-ink: #17231f; --desk-muted: #5f6a64; max-width: none; padding-right: max(1.25rem, calc((100vw - 72rem) / 2)); padding-left: max(1.25rem, calc((100vw - 72rem) / 2)); background: var(--desk-paper); color: var(--desk-muted); }
 .events-footer a:hover { color: var(--desk-ink); }
 .event-load-sentinel { display: flex; align-items: center; justify-content: center; gap: .5rem; padding: 1.1rem; color: var(--desk-muted); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .event-load-sentinel span { color: var(--desk-orange); animation: loading-dots 1.1s ease-in-out infinite; }
@@ -383,13 +406,13 @@ html.scroll-exp .event-row { animation: none; }
    authentication, and signed-in workspaces. */
 .workspace-shell, .about-page, .auth-page {
   --desk-ink: #17231f;
-  --desk-muted: #69746e;
+  --desk-muted: #5f6a64;
   --desk-paper: #f4f0e7;
   --desk-paper-deep: #e8e1d4;
   --desk-card: #fffdfa;
   --desk-line: #d2cabe;
   --desk-acid: #c8ef70;
-  --desk-orange: #ef653d;
+  --desk-orange: #c2410c;
   --bg: var(--desk-paper);
   --fg: var(--desk-ink);
   --muted: var(--desk-muted);
