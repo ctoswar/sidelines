@@ -59,13 +59,16 @@ export function ScrollExperience() {
       });
 
       // ── Entrance (replaces the CSS load reveal, staggered) ──────────────
+      // opacity, not autoAlpha: autoAlpha also sets visibility:hidden, which
+      // removed everything below the fold from the tab order and from screen
+      // readers until a physical scroll fired the reveal.
       gsap.from(".events-hero-intro, .events-hero-note, .events-hero-scene", {
         y: 16,
-        autoAlpha: 0,
+        opacity: 0,
         duration: 0.65,
         ease: "power2.out",
         stagger: 0.12,
-        clearProps: "opacity,visibility",
+        clearProps: "opacity",
       });
 
       // ── Hero stats count up once they're on stage ───────────────────────
@@ -85,10 +88,12 @@ export function ScrollExperience() {
       });
 
       // ── Scroll reveals ──────────────────────────────────────────────────
+      // Same autoAlpha caveat: opacity-only keeps controls focusable while
+      // they wait for their trigger.
       const reveal = (el: Element, y = 22) =>
         gsap.from(el, {
           y,
-          autoAlpha: 0,
+          opacity: 0,
           duration: 0.6,
           ease: "power2.out",
           scrollTrigger: { trigger: el, start: "top 90%", once: true },
@@ -96,7 +101,7 @@ export function ScrollExperience() {
       document.querySelectorAll(".events-toolbar, .events-section-label, .events-list-heading, .events-queue-head, .events-filter-panel").forEach((el) => reveal(el));
       gsap.from(".events-spotlight-grid > *", {
         y: 24,
-        autoAlpha: 0,
+        opacity: 0,
         duration: 0.6,
         ease: "power2.out",
         stagger: 0.1,
@@ -121,7 +126,7 @@ export function ScrollExperience() {
       const footer = document.querySelector(".events-footer");
       if (footer) gsap.from(footer.children, {
         y: 20,
-        autoAlpha: 0,
+        opacity: 0,
         duration: 0.6,
         ease: "power2.out",
         stagger: 0.08,
