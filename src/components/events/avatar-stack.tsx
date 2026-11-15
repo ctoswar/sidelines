@@ -1,20 +1,15 @@
-const palette = [["I", "#1f6b4a"], ["L", "#e8590c"], ["H", "#14213d"], ["R", "#9b2c2c"], ["B", "#6b46c1"]] as const;
-
+// Entrant count chip on event rows.
+//
+// Used to draw five invented avatar initials plus "N teams joined" — but
+// pickleball registrations here are per player, so a two-person event showed
+// two fake people as "2 teams". The count is real (registrations/pool rows);
+// the presentation is now a plain, honest chip.
 export function AvatarStack({ count }: { count: number }) {
-  const shown = Math.min(5, count);
   return (
     <div className="flex items-center">
-      <div className="flex -space-x-2">
-        {palette.slice(0, shown).map(([letter, color]) => (
-          <span key={letter} className="grid h-6 w-6 place-items-center rounded-full border-2 border-card text-[10px] font-bold text-white" style={{ background: color }}>
-            {letter}
-          </span>
-        ))}
-        {count > 5 && (
-          <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-card bg-fg text-[10px] font-bold text-bg">+{count - 5}</span>
-        )}
-      </div>
-      <span className="ml-3 text-xs text-muted">{count} teams joined</span>
+      <span className="rounded-full border border-line px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-muted">
+        {count} {count === 1 ? "entrant" : "entrants"}
+      </span>
     </div>
   );
 }

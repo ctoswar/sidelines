@@ -3,10 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { isPlaceholderEntrant, type EventDetail, type MatchInfo, type PoolRow } from "@/lib/event-detail";
 import { dayLabel, shown, type TimeMode } from "@/lib/event-time";
+import { displayPlace } from "@/lib/events-data";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 
 type P = { d: EventDetail };
 type PM = P & { mode: TimeMode };
+
+/** The wizard publishes this placeholder until the organizer names a venue. */
+export const isVenueTbc = (name: string) => /to be confirmed/i.test(name);
 
 const Card = ({ children, accent = false, id }: { children: React.ReactNode; accent?: boolean; id?: string }) => (
   <section id={id} className={`event-reveal rounded-xl border border-line bg-card p-5 ${accent ? "border-l-4 border-l-brand" : ""}`}>{children}</section>
@@ -57,10 +61,10 @@ export function InfoTab({ d, mode, onJump }: PM & { onJump?: (tab: StatTarget) =
   useEffect(() => { setDays(Math.ceil((Date.parse(`${d.event.start}T00:00:00Z`) - d.tz.offset * 36e5 - Date.now()) / 864e5)); }, [d]);
 
   const stats: { label: string; value: number; to: StatTarget; hint: string }[] = [
-    { label: "Teams", value: d.event.teams, to: "teams", hint: "See every entered team" },
-    { label: "Matches", value: gamesTotal, to: "schedule", hint: "Browse the full schedule" },
-    { label: "Courts", value: d.fields, to: "schedule", hint: "See the games court by court" },
-    { label: "Days", value: d.days, to: "info", hint: "Jump to the event details" },
+    { label: d.event.teams === 1 ? "Team" : "Teams", value: d.event.teams, to: "teams", hint: "See every entered team" },
+    { label: gamesTotal === 1 ? "Match" : "Matches", value: gamesTotal, to: "schedule", hint: "Browse the full schedule" },
+    { label: d.fields === 1 ? "Court" : "Courts", value: d.fields, to: "schedule", hint: "See the games court by court" },
+    { label: d.days === 1 ? "Day" : "Days", value: d.days, to: "info", hint: "Jump to the event details" },
   ];
   /** Opens the section a number points at; "Days" already sits on this tab, so it scrolls instead. */
   const openStat = (to: StatTarget) => {
@@ -120,7 +124,12 @@ export function InfoTab({ d, mode, onJump }: PM & { onJump?: (tab: StatTarget) =
       <Card>
         <H>Venue</H>
         <p className="font-bold">{d.venue.name}</p>
-        <p className="text-muted">{d.venue.address}</p>
+        <p className="text-muted">{displayPlace(d.venue.address)}</p>
+        {isVenueTbc(d.venue.name) && (
+          <p className="mt-2 text-sm text-muted">
+            The organizer has not published the address yet — the map opens the host city.
+          </p>
+        )}
         <a href={d.venue.mapUrl} target="_blank" rel="noreferrer" className="btn mt-3 inline-block">Open in Maps ↗</a>
       </Card>
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { EventDetail } from "@/lib/event-detail";
 import type { TimeMode } from "@/lib/event-time";
-import { formatRange } from "@/lib/events-data";
+import { displayPlace, formatRange } from "@/lib/events-data";
 import { divisionLabel, divisionsForEvent, type RegistrationDivisionId } from "@/lib/divisions";
 import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
@@ -202,10 +202,12 @@ export function EventShell({ d }: { d: EventDetail }) {
             {e.live && <span className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-flag px-3 py-0.5 text-xs font-bold"><span className="pulse h-1.5 w-1.5 rounded-full bg-white" />Live now</span>}
             <h1 className="font-score text-3xl font-bold leading-tight sm:text-4xl">{e.name}</h1>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-white/85"><CalendarIcon />{formatRange(e.start, e.end)}</p>
-            <a href={d.venue.mapUrl} target="_blank" rel="noreferrer" className="mt-0.5 block text-sm text-white/85 underline">{d.venue.name}, {e.city} ↗</a>
+            <a href={d.venue.mapUrl} target="_blank" rel="noreferrer" className="mt-0.5 block text-sm text-white/85 underline">
+              {S.isVenueTbc(d.venue.name) ? `Venue TBA · ${displayPlace(e.city)}, ${e.country} ↗` : `${d.venue.name}, ${displayPlace(e.city)} ↗`}
+            </a>
           </div>
         </div>
-        <p className="mt-4 text-sm text-white/70">{mode === "event" ? `All times are in ${e.city} (${d.tz.label}).` : `All times are converted to ${zone}.`}</p>
+        <p className="mt-4 text-sm text-white/70">{mode === "event" ? `All times are in ${displayPlace(e.city)} (${d.tz.label}).` : `All times are converted to ${zone}.`}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button onClick={() => setFollowing((f) => !f)} aria-pressed={following} className={`rounded-md px-4 py-2 text-sm font-bold ${following ? "bg-white/15 text-white" : "bg-white text-[#14213d]"}`}>{following ? "Following ✓" : "Follow event"}</button>
           {e.status === "upcoming" && (

@@ -19,7 +19,7 @@ export interface EventDetail {
   overall: PoolRow[]; bracket: MatchInfo[]; players: PlayerStat[]; mvp: Mvp[]; crew: Crew[];
 }
 
-const NAMES = ["Ironwood", "Lowtide", "Harbor", "Redline", "Birch", "Static", "Northgate", "Pinecone", "Sundial", "Kestrel", "Marlin", "Thornfield", "Gridlock", "Offside", "Tidepool", "Wildfire"];
+const NAMES = ["Ironwood", "Lowtide", "Harbor", "Redline", "Birch", "Static", "Northgate", "Pinecone", "Sundial", "Kestrel", "Marlin", "Thornfield", "Gridlock", "Rally", "Tidepool", "Wildfire"];
 const PEOPLE = ["Alex Rivera", "Dana Cruz", "Miguel Tan", "Priya Nair", "Kai Santos", "Noor Haddad", "Lena Cho", "Jon Park", "Maya Reyes", "Sam Ortiz", "Ivy Lim", "Theo Park", "Rina Sato", "Omar Aziz", "Bea Lopez", "Nico Dela Cruz", "Hana Kim", "Luca Ferri", "Mei Tan", "Joel Reyes", "Ana Silva", "Ravi Shah", "Cleo Ward", "Finn Moore", "Zoe Chan", "Eli Brooks", "Tess Yu", "Gabe Cruz", "Nia Okoro", "Paolo Rey", "Sana Iqbal", "Dev Patel"];
 const COLORS = ["#1f6b4a", "#e8590c", "#14213d", "#9b2c2c", "#6b46c1", "#0e7490", "#a16207", "#be185d"];
 const SLOTS = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30"];
