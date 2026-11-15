@@ -1,5 +1,5 @@
 import { EventsBrowser } from "@/components/events/events-browser";
-import { PickleballScene } from "@/components/events/pickleball-scene";
+import { HeroScene } from "@/components/events/hero-scene";
 import { ScrollExperience } from "@/components/events/scroll-experience";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -37,7 +37,7 @@ export default async function HomePage() {
               <p className="events-hero-note-text">The serve is only the beginning.</p>
               <div className="events-hero-stats"><span><b>{events.length}</b> events</span><span><b>{cityCount}</b> cities</span><span><b>{liveCount}</b> live now</span></div>
             </div>
-            <PickleballScene />
+            <HeroScene />
           </section>
           <EventsBrowser events={events} />
         </div>
