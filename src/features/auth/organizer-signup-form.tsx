@@ -43,7 +43,10 @@ export function OrganizerSignupForm() {
         <div>
           <label className="flex items-start gap-2 text-sm text-muted">
             <input type="checkbox" className="mt-1" {...register("terms")} />
-            <span>I agree to the Terms of service and Privacy policy.</span>
+            <span>
+              I agree to the <a href="/terms-of-service" className="underline hover:text-fg">Terms of service</a> and{" "}
+              <a href="/privacy-policy" className="underline hover:text-fg">Privacy policy</a>.
+            </span>
           </label>
           {errors.terms && <p className="mt-1 text-sm text-flag">{errors.terms.message}</p>}
         </div>

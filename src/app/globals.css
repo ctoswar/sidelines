@@ -33,6 +33,28 @@ body {
   color: var(--fg);
 }
 
+/* Legal + contact pages: the paper desk system on its own route. */
+.legal-page {
+  --desk-ink: #17231f;
+  --desk-muted: #5f6a64;
+  --desk-paper: #f4f0e7;
+  --desk-line: #d2cabe;
+  --desk-orange: #c2410c;
+  min-height: calc(100vh - 72px);
+  background: var(--desk-paper);
+  color: var(--desk-ink);
+}
+.legal-page-inner { margin: 0 auto; max-width: 46rem; padding: 3.5rem 1.25rem 5rem; }
+.legal-kicker { color: var(--desk-orange); font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.legal-page h1 { font-family: var(--font-score), sans-serif; font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -.02em; line-height: 1; margin-top: .75rem; }
+.legal-intro { color: var(--desk-muted); font-size: 1.05rem; line-height: 1.55; margin-top: 1rem; }
+.legal-body { display: grid; gap: 1.75rem; margin-top: 2.5rem; }
+.legal-body h2 { font-family: var(--font-score), sans-serif; font-size: 1.5rem; font-weight: 700; }
+.legal-body p, .legal-body li { color: var(--desk-ink); line-height: 1.6; }
+.legal-body ul { display: grid; gap: .5rem; margin-top: .5rem; padding-left: 1.1rem; list-style: disc; }
+.legal-body a { color: var(--desk-orange); text-decoration: underline; text-underline-offset: 2px; }
+.legal-body a:hover { color: var(--desk-ink); }
+
 :focus-visible {
   outline: 3px solid var(--flag);
   outline-offset: 2px;

@@ -263,7 +263,7 @@ export function PlayerSignupForm({ redirectTo }: { redirectTo?: string }) {
               <div className="signup-field-wide"><Field label="Team join code (optional)" placeholder="IRON-4821" error={errors.code?.message} {...register("code")} /></div>
             </div>
             <div className="signup-step-actions"><button type="button" className="btn" onClick={back}>← Back</button><button type="submit" disabled={isSubmitting} className="btn btn-pri">{isSubmitting ? <LoadingDots label="Creating account" /> : <><span>Enter the sidelines</span><b aria-hidden="true">↗</b></>}</button></div>
-            <label className="signup-terms"><input type="checkbox" {...register("terms")} /><span>I agree to the Terms of service and Privacy policy.</span></label>
+            <label className="signup-terms"><input type="checkbox" {...register("terms")} /><span>I agree to the <a href="/terms-of-service" className="underline hover:text-fg">Terms of service</a> and <a href="/privacy-policy" className="underline hover:text-fg">Privacy policy</a>.</span></label>
             {errors.terms && <p className="mt-1 text-sm text-flag">{errors.terms.message}</p>}
           </section>
         )}
