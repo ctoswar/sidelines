@@ -19,6 +19,7 @@ import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { setEventLive } from "@/server/publish";
+import { canManageTournament } from "@/server/ownership";
 import { tournamentStatusSchema } from "@/lib/validators/tournaments";
 
 export async function PATCH(
@@ -31,6 +32,11 @@ export async function PATCH(
   if (!user) return NextResponse.json({ message: "Sign in first." }, { status: 401 });
   if (user.role !== "organizer") {
     return NextResponse.json({ message: "Only organizers manage tournaments." }, { status: 403 });
+  }
+  // Flipping someone else's tournament to draft (and unlisting its event)
+  // must be impossible: ownership is verified before anything moves.
+  if (!(await canManageTournament(user, id))) {
+    return NextResponse.json({ message: "Tournament not found." }, { status: 404 });
   }
 
   const body = await request.json().catch(() => null);

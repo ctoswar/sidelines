@@ -15,6 +15,7 @@ import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { eventSelection, loadEvent } from "@/server/events";
+import { canManageEvent } from "@/server/ownership";
 import { announcementSchema } from "@/lib/validators/events";
 
 export async function GET(request: Request) {
@@ -73,6 +74,11 @@ export async function POST(request: Request) {
   const event = await loadEvent(slug);
   if (!event) {
     return NextResponse.json({ message: "Event not found." }, { status: 404 });
+  }
+  // Announcements reach every registered player — publishing into another
+  // club's event is not an organizer's prerogative, only its own (or admin's).
+  if (!(await canManageEvent(user, slug))) {
+    return NextResponse.json({ message: "This event is not yours to manage." }, { status: 403 });
   }
 
   const [row] = await db

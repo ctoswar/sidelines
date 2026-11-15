@@ -21,6 +21,7 @@ import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { eventExists } from "@/server/events";
+import { canManageEvent } from "@/server/ownership";
 import { registerSchema } from "@/lib/validators/registration";
 import { isDivisionId, type DivisionId } from "@/lib/divisions";
 
@@ -79,8 +80,10 @@ export async function GET(
     myRegistration(slug, user?.id ?? null),
   ]);
 
+  // The inbox (names + emails) is PII: only the event's own organizer — or an
+  // admin — may read it, not every organizer account on the site.
   const registrations =
-    user?.role === "organizer" ? await loadRegistrations(slug) : null;
+    user && (await canManageEvent(user, slug)) ? await loadRegistrations(slug) : null;
 
   return NextResponse.json({ count, registered: Boolean(mine), division: mine?.division ?? null, registrations });
 }
