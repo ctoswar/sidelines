@@ -92,11 +92,17 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
+      // `role` must never accept client input: Better Auth merges additional
+      // fields from the request body on /api/auth/sign-up/email and
+      // /api/auth/update-user, so `input: true` let any visitor mint an
+      // admin. Signups are players by default; the only organizer promotion
+      // happens server-side in /api/auth/signup after the credential exists,
+      // and admin rows are written by src/scripts/create-admin.ts.
       role: {
         type: "string",
         defaultValue: "player",
         required: false,
-        input: true,
+        input: false,
       },
       username: {
         type: "string",
