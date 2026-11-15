@@ -11,9 +11,30 @@ const score = Barlow_Condensed({
   variable: "--font-score",
 });
 
+// The public origin .env declares; metadata (canonical, OG, sitemap) resolves
+// against it so share previews and crawlers see absolute URLs.
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "Sidelines – Pickleball tournament scoring",
-  description: "Score pickleball matches, share live results and keep standings up to date.",
+  metadataBase: new URL(siteUrl),
+  title: "Sidelines – Pickleball events, live scores and results",
+  description:
+    "Find pickleball tournaments and leagues, register, and follow live scores, courts and standings from your phone.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Sidelines",
+    title: "Sidelines – Pickleball events, live scores and results",
+    description:
+      "Find pickleball tournaments and leagues, register, and follow live scores, courts and standings from your phone.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: "Sidelines – Pickleball events, live scores and results",
+    description:
+      "Find pickleball tournaments and leagues, register, and follow live scores, courts and standings from your phone.",
+  },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };

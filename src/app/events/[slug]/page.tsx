@@ -6,6 +6,7 @@ import { EventShell } from "@/components/events/event-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { loadEventDetail } from "@/server/events";
+import { formatRange } from "@/lib/events-data";
 
 // Phase 6: the page renders from Postgres per request (the same loadEventDetail
 // the API serves) instead of the static modules it was prerendered from. No
@@ -22,7 +23,52 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // notFound() here (not in the body) so the response status is a real 404 -
   // a streamed dynamic body has already flushed 200 by the time it throws.
   if (!detail) notFound();
-  return { title: `${detail.event.name} – Sidelines` };
+  const { event, venue } = detail;
+  const description =
+    `${event.name} — ${formatRange(event.start, event.end)} in ${event.city}, ${event.country}. ` +
+    `${venue.name} · ${detail.fields} courts · Divisions: ${detail.facts.find((f) => f.label === "Divisions")?.value ?? "see event page"}.`;
+  return {
+    title: `${event.name} – Sidelines`,
+    description,
+    alternates: { canonical: `/events/${event.slug}` },
+    openGraph: {
+      type: "website",
+      siteName: "Sidelines",
+      title: `${event.name} – Sidelines`,
+      description,
+      url: `/events/${event.slug}`,
+    },
+    twitter: { card: "summary", title: `${event.name} – Sidelines`, description },
+  };
+}
+
+/**
+ * SportsEvent structured data from the fields the event page actually has.
+ * No offers/prices are asserted — entry fees live in free-text facts, and a
+ * wrong price in the markup is worse than none.
+ */
+function sportsEventJsonLd(d: Awaited<ReturnType<typeof detailFor>>): string {
+  if (!d) return "";
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    name: d.event.name,
+    sport: "Pickleball",
+    startDate: d.event.start,
+    endDate: d.event.end,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: {
+      "@type": "Place",
+      name: d.venue.name,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: d.event.city,
+        addressCountry: d.event.code || d.event.country,
+      },
+    },
+    description: d.about,
+  }).replace(/</g, "\\u003c");
 }
 
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -32,6 +78,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: sportsEventJsonLd(detail) }}
+      />
       <SiteHeader />
       <main className="event-detail-page px-4 pb-20 pt-5 sm:px-6">
         <div className="mx-auto max-w-5xl">
