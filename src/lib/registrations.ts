@@ -7,7 +7,7 @@
 // the answer rather than optimistic state.
 
 import { jsonRequest, parse } from "./api-client";
-import { isDivisionId, type DivisionId } from "./divisions";
+import { isRegistrationDivisionId, type RegistrationDivisionId } from "./divisions";
 import type { EventItem } from "@/types";
 
 export type Registration = {
@@ -20,11 +20,11 @@ export type Registration = {
   /** The registrant's account role, or null when their account is gone. */
   role: string | null;
   /**
-   * The division they entered (mens | womens | mixed). Null only for rows
-   * saved before the division picker shipped — the UI shows no badge there
-   * rather than guessing.
+   * The division they entered (open | mens | womens | mixed). Null only for
+   * rows saved before the division picker shipped — the UI shows no badge
+   * there rather than guessing.
    */
-  division: DivisionId | null;
+  division: RegistrationDivisionId | null;
   /**
    * The joined event row — carried by GET /api/registrations (the "My
    * events" list renders from it); the per-event inbox omits it, the event
@@ -38,25 +38,25 @@ export type RegistrationState = {
   count: number;
   registered: boolean;
   /** The signed-in user's own division, when registered. */
-  division: DivisionId | null;
+  division: RegistrationDivisionId | null;
   registrations: Registration[] | null;
 };
 
 /** Fetches count + registered badge + (for organizers) the inbox rows. */
 export async function fetchRegistrationState(slug: string): Promise<RegistrationState> {
   const state = await parse<RegistrationState>(await fetch(`/api/events/${encodeURIComponent(slug)}/registrations`));
-  return { ...state, division: isDivisionId(state.division) ? state.division : null };
+  return { ...state, division: isRegistrationDivisionId(state.division) ? state.division : null };
 }
 
 /**
  * Registers the signed-in user in a division; idempotent on the server.
  * A legacy row with no division is backfilled with the one picked here.
  */
-export async function registerForEvent(slug: string, division: DivisionId): Promise<RegistrationState> {
+export async function registerForEvent(slug: string, division: RegistrationDivisionId): Promise<RegistrationState> {
   const state = await parse<RegistrationState>(
     await fetch(`/api/events/${encodeURIComponent(slug)}/registrations`, jsonRequest({ division })),
   );
-  return { ...state, division: isDivisionId(state.division) ? state.division : null };
+  return { ...state, division: isRegistrationDivisionId(state.division) ? state.division : null };
 }
 
 /** Cancels the signed-in user's registration; safe to call twice. */
@@ -69,7 +69,7 @@ export async function unregisterFromEvent(slug: string): Promise<RegistrationSta
 /** The signed-in user's registrations across all events, newest first. */
 export async function fetchMyRegistrations(): Promise<Registration[]> {
   const body = await parse<{ registrations: Registration[] }>(await fetch("/api/registrations"));
-  return body.registrations.map((r) => ({ ...r, division: isDivisionId(r.division) ? r.division : null }));
+  return body.registrations.map((r) => ({ ...r, division: isRegistrationDivisionId(r.division) ? r.division : null }));
 }
 
 /** Organizer-side removal of any registration in the inbox. */

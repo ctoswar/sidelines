@@ -39,7 +39,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           {detail.event.status === "upcoming" && (
             <section className="event-detail-cta mt-12 rounded-2xl p-6 sm:p-8">
               <p className="font-score text-3xl font-bold">Playing in this event?</p>
-              <p className="mt-1 text-muted">Log in to register your team or follow your games.</p>
+              <p className="mt-1 text-muted">Log in to register or follow your games.</p>
               <div className="mt-4 flex gap-3">
                 <Link href="/login" className="btn btn-pri">Log in</Link>
                 <Link href="/signup/player" className="btn">Create player account</Link>

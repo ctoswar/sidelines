@@ -12,7 +12,7 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { eventSelection } from "@/server/events";
-import { isDivisionId } from "@/lib/divisions";
+import { isRegistrationDivisionId } from "@/lib/divisions";
 import { deriveEventState } from "@/lib/event-state";
 
 export async function GET() {
@@ -43,7 +43,7 @@ export async function GET() {
     registrations: rows.map((r) => ({
       ...r,
       role: r.role ?? null,
-      division: isDivisionId(r.division) ? r.division : null,
+      division: isRegistrationDivisionId(r.division) ? r.division : null,
       event: {
         ...r.event,
         ...deriveEventState(r.event.start, r.event.end, r.event.live),

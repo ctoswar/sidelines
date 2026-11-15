@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { EventDetail } from "@/lib/event-detail";
 import type { TimeMode } from "@/lib/event-time";
 import { formatRange } from "@/lib/events-data";
-import { divisions, divisionLabel, type DivisionId } from "@/lib/divisions";
+import { divisionLabel, divisionsForEvent, type RegistrationDivisionId } from "@/lib/divisions";
 import { EventLogo } from "./event-card";
 import { CalendarIcon } from "./icons";
 import { AUTH_CHANGED_EVENT, refreshSession } from "@/lib/auth";
@@ -55,10 +55,14 @@ export function EventShell({ d }: { d: EventDetail }) {
   const [copied, setCopied] = useState(false);
   const [registered, setRegistered] = useState(false);
   /** The division this account entered, when registered; null on legacy rows. */
-  const [myDivision, setMyDivision] = useState<DivisionId | null>(null);
+  const [myDivision, setMyDivision] = useState<RegistrationDivisionId | null>(null);
   /** The register flow's division picker — open until one is picked or cancelled. */
   const [picking, setPicking] = useState(false);
   const [registering, setRegistering] = useState(false);
+  /** The picker's error line — a failed request must not look like a dead button. */
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  /** Only the divisions this event advertises, from its own tag list. */
+  const eventDivisions = divisionsForEvent(e.tags);
   const strip = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -107,6 +111,13 @@ export function EventShell({ d }: { d: EventDetail }) {
 
   useLiveSubscription(["registrations"], syncRegistration);
 
+  // Results, schedule moves and announcements land as server-rendered data in
+  // `d` — a spectator courtside should not need a manual reload to see a final
+  // score or a court change. A refresh signal re-renders the page's server
+  // components; the payload is a no-op ping, so this stays cheap.
+  const refreshPage = useCallback(() => router.refresh(), [router]);
+  useLiveSubscription(["results", "schedule", "announcements"], refreshPage);
+
   useEffect(() => {
     const nodes = [...document.querySelectorAll<HTMLElement>(".event-detail-page .event-reveal")];
     if (!("IntersectionObserver" in window)) {
@@ -132,7 +143,7 @@ export function EventShell({ d }: { d: EventDetail }) {
   };
   const scroll = (dx: number) => strip.current?.scrollBy({ left: dx, behavior: "smooth" });
   const share = async () => { await navigator.clipboard?.writeText(window.location.href.split("#")[0]); setCopied(true); setTimeout(() => setCopied(false), 1800); };
-  const applyState = (state: { registered: boolean; division: DivisionId | null }) => {
+  const applyState = (state: { registered: boolean; division: RegistrationDivisionId | null }) => {
     setRegistered(state.registered);
     setMyDivision(state.division);
   };
@@ -160,13 +171,14 @@ export function EventShell({ d }: { d: EventDetail }) {
     }
   };
   /** Confirms a division in the picker and stores the registration. */
-  const chooseDivision = async (division: DivisionId) => {
+  const chooseDivision = async (division: RegistrationDivisionId) => {
     setRegistering(true);
+    setRegisterError(null);
     try {
       applyState(await registerForEvent(e.slug, division));
       setPicking(false);
-    } catch {
-      /* keep the server's answer as-is; a retry on focus re-syncs */
+    } catch (error) {
+      setRegisterError(error instanceof Error ? error.message : "Could not save your registration. Try again.");
     } finally {
       setRegistering(false);
     }
@@ -238,9 +250,12 @@ export function EventShell({ d }: { d: EventDetail }) {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Choose your division" onClick={() => !registering && setPicking(false)}>
           <div className="w-full max-w-sm rounded-2xl border border-line bg-card p-6" onClick={(event) => event.stopPropagation()}>
             <h2 className="font-score text-2xl font-bold">Choose your division</h2>
-            <p className="mt-1 text-sm text-muted">Registering for {e.name}. You can cancel any time from this page or My events.</p>
+            <p className="mt-1 text-sm text-muted">
+              Registering for {e.name}. Entries are per player — the organizer places registrants
+              into pools. You can cancel any time from this page or My events.
+            </p>
             <div className="mt-5 grid gap-2">
-              {divisions.map((division) => (
+              {eventDivisions.map((division) => (
                 <button
                   key={division.id}
                   onClick={() => void chooseDivision(division.id)}
@@ -248,10 +263,13 @@ export function EventShell({ d }: { d: EventDetail }) {
                   className={`flex items-center justify-between rounded-md border px-4 py-3 text-left text-sm font-bold transition-colors ${myDivision === division.id ? "border-brand bg-brand/10 text-fg" : "border-line text-fg hover:border-brand/60"} disabled:opacity-60`}
                 >
                   {division.label}
-                  <span className="text-xs font-medium text-muted">{division.tiers.join(" · ")}</span>
+                  {division.id === "open" && <span className="text-xs font-medium text-muted">Any gender</span>}
                 </button>
               ))}
             </div>
+            {registerError && (
+              <p role="alert" className="mt-3 rounded-md border border-flag px-3 py-2 text-sm font-medium text-flag">{registerError}</p>
+            )}
             <button onClick={() => setPicking(false)} disabled={registering} className="mt-4 w-full rounded-md border border-line px-4 py-2 text-sm font-bold text-muted hover:text-fg disabled:opacity-60">
               {registering ? "Registering…" : "Cancel"}
             </button>
