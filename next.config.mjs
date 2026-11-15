@@ -1,6 +1,25 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  // Baseline response headers. The live deployment terminates plain HTTP on
+  // the LAN today; HSTS is inert until TLS is in front of the app and the
+  // rest are safe either way. CSP is deliberately left out until the inline
+  // scripts Next streams get nonces — a naive policy breaks the app.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+        ],
+      },
+    ];
+  },
   // The Docker build sets NEXT_OUTPUT_STANDALONE=1 to produce the
   // self-contained .next/standalone bundle. Local builds keep the default
   // output so `next start` (and the verify harnesses) work unchanged.
