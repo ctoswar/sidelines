@@ -108,13 +108,24 @@ export async function mintGameTokens(
 
 /**
  * Writes the final score: upserts `game_results` and marks the game row
- * final. Returns null when the game is not in the schedule.
+ * final. Returns null when the game is not in the schedule, and
+ * `"final"` when a result is already recorded — a stale QR token must never
+ * silently rewrite published standings. Callers that may correct a result
+ * (the organizer workspace) pass `allowFinalized`.
  */
 export async function writeGameResult(
   gameId: string,
   score: string,
-): Promise<GameResultValue | null> {
-  if (!(await gameExists(gameId))) return null;
+  { allowFinalized = false }: { allowFinalized?: boolean } = {},
+): Promise<GameResultValue | null | "final"> {
+  const [existing] = await db
+    .select({ status: t.games.status })
+    .from(t.games)
+    .where(eq(t.games.id, gameId))
+    .limit(1);
+  if (!existing) return null;
+  if (existing.status === "final" && !allowFinalized) return "final";
+
   const completedAt = new Date();
   await db.transaction(async (tx) => {
     await tx

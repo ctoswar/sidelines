@@ -75,7 +75,19 @@ export async function POST(
     );
   }
 
-  const result = await writeGameResult(gameId, parsed.data.score);
+  // A QR capability token scores a game once; correcting a recorded result is
+  // an organizer decision made in the workspace, not something a stale link
+  // can do. `bearer` present means a scanned link, absent means the
+  // authenticated organizer session (enforced above).
+  const result = await writeGameResult(gameId, parsed.data.score, {
+    allowFinalized: !bearer,
+  });
+  if (result === "final") {
+    return NextResponse.json(
+      { message: "This game is already final. Ask the organizer to correct the score." },
+      { status: 409 },
+    );
+  }
   if (!result) {
     return NextResponse.json({ message: "Game not found." }, { status: 404 });
   }
