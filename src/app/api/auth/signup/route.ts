@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { auth, type AppRole } from "@/server/auth";
 import { db } from "@/server/db";
+import { allow, requestIp } from "@/server/rate-limit";
 import * as t from "@/server/schema";
 import {
   organizerSignupSchema,
@@ -63,6 +64,16 @@ function organizationRow(ownerUserId: string, body: PlayerBody) {
 }
 
 export async function POST(request: Request) {
+  // Account creation does password hashing and several queries; cap attempts
+  // per client so the route cannot be hammered for CPU or enumeration. Five
+  // signups per ten minutes is far above any real organizer's needs.
+  if (!allow(`signup:${requestIp(request)}`, 5, 10 * 60_000)) {
+    return NextResponse.json(
+      { ok: false, message: "Too many attempts. Try again later." },
+      { status: 429 },
+    );
+  }
+
   let body: PlayerBody;
   try {
     body = await request.json();
