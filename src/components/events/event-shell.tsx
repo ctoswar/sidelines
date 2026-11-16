@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { EventDetail } from "@/lib/event-detail";
@@ -64,7 +64,24 @@ export function EventShell({ d }: { d: EventDetail }) {
   /** Only the divisions this event advertises, from its own tag list. */
   const eventDivisions = divisionsForEvent(e.tags);
   const strip = useRef<HTMLDivElement>(null);
+  const divisionDialog = useRef<HTMLDivElement>(null);
+  const registeringRef = useRef(registering);
   const router = useRouter();
+
+  // Follow is a spectator bookmark, so it belongs to this browser rather than
+  // a new server table. Reading it on mount means the button survives a
+  // reload; an unavailable storage API just leaves it off.
+  useEffect(() => {
+    try {
+      setFollowing(window.localStorage.getItem(`sidelines:follow:${e.slug}`) === "1");
+    } catch {
+      /* storage unavailable */
+    }
+  }, [e.slug]);
+
+  useEffect(() => {
+    registeringRef.current = registering;
+  }, [registering]);
 
   useEffect(() => {
     const h = window.location.hash.slice(1) as TabKey;
@@ -143,6 +160,71 @@ export function EventShell({ d }: { d: EventDetail }) {
   };
   const scroll = (dx: number) => strip.current?.scrollBy({ left: dx, behavior: "smooth" });
   const share = async () => { await navigator.clipboard?.writeText(window.location.href.split("#")[0]); setCopied(true); setTimeout(() => setCopied(false), 1800); };
+  const toggleFollow = () => {
+    setFollowing((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(`sidelines:follow:${e.slug}`, next ? "1" : "0");
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
+  };
+  // WAI-ARIA tabs: arrows move between tabs, Home/End jump to the ends, and
+  // only the selected tab stays in the page Tab order.
+  const onTabKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const keys = tabs.map((item) => item.key);
+    const current = keys.indexOf(tab);
+    let next = current;
+    if (event.key === "ArrowRight") next = (current + 1) % keys.length;
+    else if (event.key === "ArrowLeft") next = (current - 1 + keys.length) % keys.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = keys.length - 1;
+    else return;
+    event.preventDefault();
+    const key = keys[next];
+    pick(key);
+    requestAnimationFrame(() => document.getElementById(`tab-${key}`)?.focus());
+  };
+
+  // Keep keyboard focus inside the division picker and let Escape close it —
+  // previously Tab reached the page behind the dialog and there was no way
+  // out without a mouse.
+  useEffect(() => {
+    if (!picking) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusable = () =>
+      [...(divisionDialog.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ) ?? [])].filter((element) => element.offsetParent !== null);
+    const timer = window.setTimeout(() => focusable()[0]?.focus(), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !registeringRef.current) {
+        event.preventDefault();
+        setPicking(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus();
+    };
+  }, [picking]);
   const applyState = (state: { registered: boolean; division: RegistrationDivisionId | null }) => {
     setRegistered(state.registered);
     setMyDivision(state.division);
@@ -209,7 +291,7 @@ export function EventShell({ d }: { d: EventDetail }) {
         </div>
         <p className="mt-4 text-sm text-white/70">{mode === "event" ? `All times are in ${displayPlace(e.city)} (${d.tz.label}).` : `All times are converted to ${zone}.`}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={() => setFollowing((f) => !f)} aria-pressed={following} className={`rounded-md px-4 py-2 text-sm font-bold ${following ? "bg-white/15 text-white" : "bg-white text-[#14213d]"}`}>{following ? "Following ✓" : "Follow event"}</button>
+          <button onClick={toggleFollow} aria-pressed={following} className={`rounded-md px-4 py-2 text-sm font-bold ${following ? "bg-white/15 text-white" : "bg-white text-[#14213d]"}`}>{following ? "Following ✓" : "Follow event"}</button>
           {e.status === "upcoming" && (
             <button onClick={register} aria-pressed={registered} title={registered ? "Click to cancel your registration" : "Pick a division to register"} className={`rounded-md border border-white/30 px-4 py-2 text-sm font-bold ${registered ? "bg-white/15 text-white" : "bg-white text-[#17231f]"}`}>
               {registered ? `Registered ✓${myDivision ? ` · ${divisionLabel(myDivision)}` : ""}` : "Register for event"}
@@ -222,9 +304,9 @@ export function EventShell({ d }: { d: EventDetail }) {
       <div className="event-detail-tabs sticky top-0 z-10 -mx-4 mt-5 border-b border-line bg-bg/95 px-4 backdrop-blur">
         <div className="flex items-center gap-1">
           <button aria-label="Scroll tabs left" onClick={() => scroll(-220)} className="hidden h-8 w-8 shrink-0 place-items-center rounded-full border border-line bg-card sm:grid">‹</button>
-          <div ref={strip} role="tablist" aria-label="Event sections" className="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
+          <div ref={strip} role="tablist" aria-label="Event sections" onKeyDown={onTabKeyDown} className="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
             {tabs.map((t) => (
-              <button key={t.key} id={`tab-${t.key}`} role="tab" aria-selected={tab === t.key} aria-controls="panel" onClick={() => pick(t.key)}
+              <button key={t.key} id={`tab-${t.key}`} role="tab" aria-selected={tab === t.key} aria-controls="panel" tabIndex={tab === t.key ? 0 : -1} onClick={() => pick(t.key)}
                 className={`whitespace-nowrap border-b-4 px-4 py-3 text-sm font-bold ${tab === t.key ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>
                 {t.label}
                 {t.key === "teams" && <span className="ml-1.5 rounded-full bg-line px-1.5 py-0.5 text-[11px]">{e.teams}</span>}
@@ -235,7 +317,7 @@ export function EventShell({ d }: { d: EventDetail }) {
         </div>
       </div>
 
-      <div id="panel" role="tabpanel" className="event-detail-panel mt-7">
+      <div id="panel" role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={0} className="event-detail-panel mt-7">
         {tab === "info" && <S.InfoTab d={d} mode={mode} onJump={pick} />}
         {tab === "teams" && <S.TeamsTab d={d} />}
         {tab === "schedule" && <S.ScheduleTab d={d} mode={mode} />}
@@ -249,9 +331,9 @@ export function EventShell({ d }: { d: EventDetail }) {
       </div>
 
       {picking && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Choose your division" onClick={() => !registering && setPicking(false)}>
-          <div className="w-full max-w-sm rounded-2xl border border-line bg-card p-6" onClick={(event) => event.stopPropagation()}>
-            <h2 className="font-score text-2xl font-bold">Choose your division</h2>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="division-dialog-title" onClick={() => !registering && setPicking(false)}>
+          <div ref={divisionDialog} className="w-full max-w-sm rounded-2xl border border-line bg-card p-6" onClick={(event) => event.stopPropagation()}>
+            <h2 id="division-dialog-title" className="font-score text-2xl font-bold">Choose your division</h2>
             <p className="mt-1 text-sm text-muted">
               Registering for {e.name}. Entries are per player — the organizer places registrants
               into pools. You can cancel any time from this page or My events.

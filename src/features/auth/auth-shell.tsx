@@ -32,7 +32,7 @@ export function AuthShell({ mode, aside, next, wide = false, children }: Props) 
         <span />
       </aside>
 
-      <section className="auth-content flex items-center justify-center p-6 sm:p-10">
+      <main className="auth-content flex items-center justify-center p-6 sm:p-10">
         <div className={`auth-card w-full ${wide ? "max-w-4xl" : "max-w-md"} py-8`}>
           <Link href="/" className="mb-6 block font-score text-3xl font-bold lg:hidden">Sidelines<span>.</span></Link>
           <div className="auth-tabs mb-8 flex border-b border-line">
@@ -41,7 +41,7 @@ export function AuthShell({ mode, aside, next, wide = false, children }: Props) 
           </div>
           {children}
         </div>
-      </section>
+      </main>
     </div>
   );
 }
