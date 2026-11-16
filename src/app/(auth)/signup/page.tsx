@@ -23,6 +23,11 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         ))}
       </div>
       <p className="mt-4 text-sm text-muted">Scorekeepers don&apos;t sign up here. Organizers invite them by email.</p>
+      <p className="mt-3 text-xs text-muted">
+        By creating an account you agree to our{" "}
+        <Link href="/terms-of-service" className="underline">Terms of Service</Link> and{" "}
+        <Link href="/privacy-policy" className="underline">Privacy Policy</Link>.
+      </p>
     </AuthShell>
   );
 }
