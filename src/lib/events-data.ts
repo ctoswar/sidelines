@@ -40,3 +40,15 @@ export const getEvent = (slug: string) => events.find((e) => e.slug === slug);
  */
 export const displayPlace = (place: string) =>
   place.replace(/\b\p{L}[\p{L}']*/gu, (word) => word[0].toUpperCase() + word.slice(1));
+
+/**
+ * Replaces one stored place name inside a longer string, case-insensitively,
+ * with its display form. About text and fact rows were written before the city
+ * was normalized, so "imus" survives in the prose while cards read "Imus".
+ */
+export function titleCasePlaceIn(text: string, place: string): string {
+  const trimmed = place.trim();
+  if (!trimmed) return text;
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`\\b${escaped}\\b`, "gi"), displayPlace(trimmed));
+}

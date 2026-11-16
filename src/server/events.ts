@@ -13,6 +13,7 @@ import * as t from "@/server/schema";
 import type { EventItem, OpenTournament } from "@/types";
 import { parseFinalScore } from "@/lib/game-results";
 import { deriveEventState } from "@/lib/event-state";
+import { titleCasePlaceIn } from "@/lib/events-data";
 import { teamColor, poolSlotLabel, bracketFeedLabel, type Crew, type EventDetail, type MatchInfo, type Mvp, type PlayerStat, type PoolRow, type TeamInfo } from "@/lib/event-detail";
 import { timeFromLabel, minutesFromTime, labelFromMinutes, SLOT_MINUTES } from "@/lib/schedule-config";
 import { loadPool } from "@/server/pool";
@@ -47,7 +48,7 @@ export function eventRowToItem(row: typeof t.events.$inferSelect): EventItem {
   // status/live are derived from the dates so stale stored columns cannot
   // list a finished event as "upcoming" or count it as "live now" (see
   // src/lib/event-state.ts).
-  const state = deriveEventState(row.startDate, row.endDate, row.live);
+  const state = deriveEventState(row.startDate, row.endDate, row.live, { code: row.code });
   return {
     slug: row.slug,
     name: row.name,
@@ -82,19 +83,23 @@ export async function loadEventDetail(slug: string): Promise<EventDetail | null>
     .limit(1);
   if (!detailRow) return null;
 
+  // Rows published before the city was normalized still carry "imus" in the
+  // prose, the venue and the time fact. Fix it at read time so existing events
+  // are correct without rewriting production data.
+  const place = eventRow.city;
   const detail: EventDetail = {
     event: eventRowToItem(eventRow),
-    about: detailRow.about,
+    about: titleCasePlaceIn(detailRow.about, place),
     venue: {
-      name: detailRow.venueName,
-      address: detailRow.venueAddress,
+      name: titleCasePlaceIn(detailRow.venueName, place),
+      address: titleCasePlaceIn(detailRow.venueAddress, place),
       mapUrl: detailRow.venueMapUrl,
     },
     tz: { label: detailRow.tzLabel, offset: detailRow.tzOffset },
     hasResults: detailRow.hasResults,
     days: detailRow.days,
     fields: detailRow.fields,
-    facts: detailRow.facts,
+    facts: detailRow.facts.map((fact) => ({ ...fact, value: titleCasePlaceIn(fact.value, place) })),
     announcements: [...detailRow.announcements],
     teams: detailRow.teams as unknown as TeamInfo[],
     matches: detailRow.matches as unknown as MatchInfo[],
