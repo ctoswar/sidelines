@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/dashboard/use-toast";
-import { submitGameResult } from "@/lib/game-results";
+import { submitGameResult, submitLiveScore } from "@/lib/game-results";
 import { SCORING } from "@/lib/scoring";
 import type { Side } from "@/types";
 
 const clock = (secs: number) =>
   `${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
+
+/** Quiet period before an in-play score is broadcast, in milliseconds. */
+const LIVE_DELAY = 1200;
 
 interface State {
   score: Record<Side, number>;
@@ -110,6 +113,83 @@ export function ScorePanel({ teams, field, scheduleLabel, target = SCORING.targe
   // already on record must not be rewritten by merely reopening the panel.
   const won = (s.score.a >= target || s.score.b >= target) && Math.abs(s.score.a - s.score.b) >= winBy;
   const finished = won || isFinal;
+  // Live scoreboard state. `sent` is the last score the server accepted,
+  // `desired` the board on screen, and `pending` the newest score waiting for
+  // the debounce. The public event page reads the game row, so these updates
+  // reach spectators without touching `game_results` or the standings.
+  const live = useRef({
+    sent: initialScore ? `${initialScore[0]}–${initialScore[1]}` : "0–0",
+    desired: initialScore ? `${initialScore[0]}–${initialScore[1]}` : "0–0",
+    pending: null as string | null,
+    busy: false,
+  });
+  const liveReady = useRef(false);
+  const liveTimer = useRef<number | null>(null);
+  const finishedRef = useRef(finished);
+
+  // One request in flight at a time; points tapped during a request update
+  // `desired` and are sent by the same loop when it finishes.
+  const flushLive = useCallback(async () => {
+    if (!gameId) return;
+    const state = live.current;
+    if (state.busy) return;
+    state.busy = true;
+    try {
+      while (liveReady.current) {
+        const next = state.pending ?? state.desired;
+        if (!next || next === state.sent) break;
+        state.pending = null;
+        try {
+          await submitLiveScore(gameId, next, token);
+          state.sent = next;
+        } catch (error) {
+          // A late live request can race the final submit; that 409 is
+          // expected and must not nag the scorekeeper on the finish screen.
+          if (!finishedRef.current) {
+            show(error instanceof Error ? error.message : "Could not send the live score");
+          }
+          break;
+        }
+      }
+    } finally {
+      state.busy = false;
+    }
+  }, [gameId, token, show]);
+
+  useEffect(() => {
+    const score = `${s.score.a}–${s.score.b}`;
+    const ready = Boolean(gameId) && !s.offline && !finished;
+    finishedRef.current = finished;
+    liveReady.current = ready;
+    live.current.desired = score;
+    if (!ready) {
+      live.current.pending = null;
+      if (liveTimer.current !== null) {
+        window.clearTimeout(liveTimer.current);
+        liveTimer.current = null;
+      }
+      return;
+    }
+    if (score === live.current.sent) {
+      live.current.pending = null;
+      return;
+    }
+    live.current.pending = score;
+    // Keep one timer instead of resetting it on every point: a fast rally
+    // still broadcasts its latest score every couple of seconds.
+    if (liveTimer.current !== null) return;
+    liveTimer.current = window.setTimeout(() => {
+      liveTimer.current = null;
+      void flushLive();
+    }, LIVE_DELAY);
+  }, [gameId, s.offline, finished, s.score.a, s.score.b, flushLive]);
+
+  useEffect(
+    () => () => {
+      if (liveTimer.current !== null) window.clearTimeout(liveTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!s.running) return;

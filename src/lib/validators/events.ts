@@ -15,11 +15,15 @@ export const crewSchema = z.object({
 });
 export type CrewInput = z.infer<typeof crewSchema>;
 
-/** Final score as typed by the panel: "11–7" (en dash or hyphen). */
+/**
+ * Score as typed by the panel: "11–7" (en dash or hyphen). `live: true`
+ * records an in-play update; the panel sends the final score without it.
+ */
 export const resultSchema = z.object({
   score: z
     .string()
     .trim()
     .regex(/^\d{1,3}[–-]\d{1,3}$/, "Scores look like 11–7."),
+  live: z.boolean().optional(),
 });
 export type ResultInput = z.infer<typeof resultSchema>;

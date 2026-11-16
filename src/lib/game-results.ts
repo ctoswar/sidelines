@@ -40,6 +40,29 @@ export async function submitGameResult(gameId: string, score: string, token?: st
   return body.result;
 }
 
+/**
+ * Sends an in-play score for a game. Only the game row's score and live status
+ * change; `game_results` is written by the final submit, so standings and
+ * qualification do not move while the match is running. Pass the same `token`
+ * as the final submit. Throws the server's message on rejection.
+ */
+export async function submitLiveScore(
+  gameId: string,
+  score: string,
+  token?: string,
+): Promise<{ score: string }> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const body = await parse<{ result: { score: string } }>(
+    await fetch(`/api/score/games/${encodeURIComponent(gameId)}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ score, live: true }),
+    }),
+  );
+  return body.result;
+}
+
 /** Applies saved final scores over the seeded schedule. */
 export function applyGameResults<T extends { id: string; score: string; status: string }>(
   schedule: readonly T[],
