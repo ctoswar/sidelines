@@ -13,7 +13,7 @@ import * as t from "@/server/schema";
 import type { EventItem, OpenTournament } from "@/types";
 import { parseFinalScore } from "@/lib/game-results";
 import { deriveEventState } from "@/lib/event-state";
-import { titleCasePlaceIn } from "@/lib/events-data";
+import { displayPlace, titleCasePlaceIn } from "@/lib/events-data";
 import { teamColor, poolSlotLabel, bracketFeedLabel, type Crew, type EventDetail, type MatchInfo, type Mvp, type PlayerStat, type PoolRow, type TeamInfo } from "@/lib/event-detail";
 import { timeFromLabel, minutesFromTime, labelFromMinutes, SLOT_MINUTES } from "@/lib/schedule-config";
 import { loadPool } from "@/server/pool";
@@ -54,7 +54,7 @@ export function eventRowToItem(row: typeof t.events.$inferSelect): EventItem {
     name: row.name,
     start: row.startDate,
     end: row.endDate,
-    city: row.city,
+    city: displayPlace(row.city),
     country: row.country,
     code: row.code,
     tags: [...row.tags],
@@ -93,7 +93,7 @@ export async function loadEventDetail(slug: string): Promise<EventDetail | null>
     venue: {
       name: titleCasePlaceIn(detailRow.venueName, place),
       address: titleCasePlaceIn(detailRow.venueAddress, place),
-      mapUrl: detailRow.venueMapUrl,
+      mapUrl: titleCasePlaceIn(detailRow.venueMapUrl, place),
     },
     tz: { label: detailRow.tzLabel, offset: detailRow.tzOffset },
     hasResults: detailRow.hasResults,
