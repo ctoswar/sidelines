@@ -14,6 +14,7 @@ import type { EventItem, OpenTournament } from "@/types";
 import { parseFinalScore } from "@/lib/game-results";
 import { deriveEventState } from "@/lib/event-state";
 import { displayPlace, titleCasePlaceIn } from "@/lib/events-data";
+import { formatGmtOffset, gmtOffsetHours, zoneForCode } from "@/lib/timezones";
 import { teamColor, poolSlotLabel, bracketFeedLabel, type Crew, type EventDetail, type MatchInfo, type Mvp, type PlayerStat, type PoolRow, type TeamInfo } from "@/lib/event-detail";
 import { timeFromLabel, minutesFromTime, labelFromMinutes, SLOT_MINUTES } from "@/lib/schedule-config";
 import { loadPool } from "@/server/pool";
@@ -87,6 +88,12 @@ export async function loadEventDetail(slug: string): Promise<EventDetail | null>
   // prose, the venue and the time fact. Fix it at read time so existing events
   // are correct without rewriting production data.
   const place = eventRow.city;
+  // Recompute the offset for this event's dates instead of trusting the value
+  // stored at publish time: a fixed summer offset is wrong for an Australian
+  // or New Zealand winter event, and existing rows cannot be rewritten.
+  const zone = zoneForCode(eventRow.code);
+  const offset = zone ? gmtOffsetHours(zone, eventRow.startDate) : detailRow.tzOffset;
+  const tzLabel = zone ? formatGmtOffset(offset) : detailRow.tzLabel;
   const detail: EventDetail = {
     event: eventRowToItem(eventRow),
     about: titleCasePlaceIn(detailRow.about, place),
@@ -95,11 +102,15 @@ export async function loadEventDetail(slug: string): Promise<EventDetail | null>
       address: titleCasePlaceIn(detailRow.venueAddress, place),
       mapUrl: titleCasePlaceIn(detailRow.venueMapUrl, place),
     },
-    tz: { label: detailRow.tzLabel, offset: detailRow.tzOffset },
+    tz: { label: tzLabel, offset },
     hasResults: detailRow.hasResults,
     days: detailRow.days,
     fields: detailRow.fields,
-    facts: detailRow.facts.map((fact) => ({ ...fact, value: titleCasePlaceIn(fact.value, place) })),
+    facts: detailRow.facts.map((fact) =>
+      fact.label === "Local time"
+        ? { ...fact, value: `${displayPlace(place)} (${tzLabel})` }
+        : { ...fact, value: titleCasePlaceIn(fact.value, place) },
+    ),
     announcements: [...detailRow.announcements],
     teams: detailRow.teams as unknown as TeamInfo[],
     matches: detailRow.matches as unknown as MatchInfo[],
