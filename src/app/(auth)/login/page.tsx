@@ -7,6 +7,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next } = await searchParams;
   return (
     <AuthShell mode="login" next={next}>
+      <h1 className="sr-only">Log in to Sidelines</h1>
       <LoginForm />
     </AuthShell>
   );

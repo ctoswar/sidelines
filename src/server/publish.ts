@@ -19,6 +19,7 @@ import type { Database } from "./db";
 import * as t from "./schema";
 import { describeRange } from "@/lib/tournament-meta";
 import { displayPlace } from "@/lib/events-data";
+import { formatGmtOffset, gmtOffsetHours } from "@/lib/timezones";
 
 /** The transaction handle the create route already runs under. */
 export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
@@ -41,21 +42,23 @@ export type PublishInput = {
 const PALETTE = ["#1f6b4a", "#14213d", "#0e7490", "#9b2c2c", "#6b46c1", "#be185d", "#a16207", "#15803d"];
 
 /**
- * Places the catalogue can label properly: an ISO-ish code and a whole-hour
- * GMT offset. Anything else renders as the plain city and runs on GMT+0, the
- * same as the generated fixtures for an unknown code.
+ * Places the catalogue can label properly: an ISO-ish code and the country's
+ * IANA zone. The GMT offset is resolved for the event's dates at publish time
+ * (see src/lib/timezones.ts), so daylight saving is respected. Anything else
+ * renders as the plain city and runs on GMT+0, the same as the generated
+ * fixtures for an unknown code.
  */
-const PLACES: Record<string, { code: string; offset: number }> = {
-  philippines: { code: "PH", offset: 8 },
-  japan: { code: "JP", offset: 9 },
-  singapore: { code: "SG", offset: 8 },
-  "hong kong": { code: "HK", offset: 8 },
-  australia: { code: "AU", offset: 11 },
-  "south korea": { code: "KR", offset: 9 },
-  thailand: { code: "TH", offset: 7 },
-  taiwan: { code: "TW", offset: 8 },
-  malaysia: { code: "MY", offset: 8 },
-  "new zealand": { code: "NZ", offset: 12 },
+const PLACES: Record<string, { code: string; zone: string }> = {
+  philippines: { code: "PH", zone: "Asia/Manila" },
+  japan: { code: "JP", zone: "Asia/Tokyo" },
+  singapore: { code: "SG", zone: "Asia/Singapore" },
+  "hong kong": { code: "HK", zone: "Asia/Hong_Kong" },
+  australia: { code: "AU", zone: "Australia/Sydney" },
+  "south korea": { code: "KR", zone: "Asia/Seoul" },
+  thailand: { code: "TH", zone: "Asia/Bangkok" },
+  taiwan: { code: "TW", zone: "Asia/Taipei" },
+  malaysia: { code: "MY", zone: "Asia/Kuala_Lumpur" },
+  "new zealand": { code: "NZ", zone: "Pacific/Auckland" },
 };
 
 /** Wizard division labels -> the tag vocabulary the event filters use. */
@@ -135,7 +138,8 @@ export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promi
 
   const place = PLACES[input.country.trim().toLowerCase()];
   const code = place?.code ?? "";
-  const offset = place?.offset ?? 0;
+  const offset = gmtOffsetHours(place?.zone, startDate);
+  const tzLabel = formatGmtOffset(offset);
   const courts = input.courts ?? 1;
   // Stored prose (the about text, the "Local time" fact, the venue address)
   // is written here once and printed verbatim everywhere, so the city is
@@ -194,7 +198,7 @@ export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promi
       venueName: "Venue to be confirmed",
       venueAddress: location,
       venueMapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`,
-      tzLabel: `GMT+${offset}`,
+      tzLabel,
       tzOffset: offset,
       // Results, pools, brackets and stats arrive with the games themselves.
       hasResults: false,
@@ -205,7 +209,7 @@ export async function publishTournamentEvent(tx: Tx, input: PublishInput): Promi
         { label: "Courts", value: String(courts) },
         { label: "Divisions", value: divisions.join(", ") },
         { label: "First game", value: input.scheduleStart },
-        { label: "Local time", value: `${city} (GMT+${offset})` },
+        { label: "Local time", value: `${city} (${tzLabel})` },
         { label: "Entry fee", value: "Contact organizers" },
       ],
       teams: [],

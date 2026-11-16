@@ -1,5 +1,6 @@
 import type { EventItem } from "@/types";
-import { getEvent } from "./events-data";
+import { displayPlace, getEvent } from "./events-data";
+import { formatGmtOffset, gmtOffsetHours } from "./timezones";
 
 export type MatchStatus = "final" | "live" | "scheduled";
 export interface TeamInfo { name: string; pool: "A" | "B"; seed: number; roster: number; sportsmanship: number; color: string }
@@ -23,9 +24,10 @@ const NAMES = ["Ironwood", "Lowtide", "Harbor", "Redline", "Birch", "Static", "N
 const PEOPLE = ["Alex Rivera", "Dana Cruz", "Miguel Tan", "Priya Nair", "Kai Santos", "Noor Haddad", "Lena Cho", "Jon Park", "Maya Reyes", "Sam Ortiz", "Ivy Lim", "Theo Park", "Rina Sato", "Omar Aziz", "Bea Lopez", "Nico Dela Cruz", "Hana Kim", "Luca Ferri", "Mei Tan", "Joel Reyes", "Ana Silva", "Ravi Shah", "Cleo Ward", "Finn Moore", "Zoe Chan", "Eli Brooks", "Tess Yu", "Gabe Cruz", "Nia Okoro", "Paolo Rey", "Sana Iqbal", "Dev Patel"];
 const COLORS = ["#1f6b4a", "#e8590c", "#14213d", "#9b2c2c", "#6b46c1", "#0e7490", "#a16207", "#be185d"];
 const SLOTS = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30"];
-const TZ: Record<string, { offset: number; city: string }> = {
-  PH: { offset: 8, city: "Manila" }, JP: { offset: 9, city: "Tokyo" }, SG: { offset: 8, city: "Singapore" }, HK: { offset: 8, city: "Hong Kong" },
-  AU: { offset: 11, city: "Sydney" }, KR: { offset: 9, city: "Seoul" }, TH: { offset: 7, city: "Bangkok" }, TW: { offset: 8, city: "Taipei" },
+const TZ: Record<string, { zone: string; city: string }> = {
+  PH: { zone: "Asia/Manila", city: "Manila" }, JP: { zone: "Asia/Tokyo", city: "Tokyo" }, SG: { zone: "Asia/Singapore", city: "Singapore" }, HK: { zone: "Asia/Hong_Kong", city: "Hong Kong" },
+  AU: { zone: "Australia/Sydney", city: "Sydney" }, KR: { zone: "Asia/Seoul", city: "Seoul" }, TH: { zone: "Asia/Bangkok", city: "Bangkok" }, TW: { zone: "Asia/Taipei", city: "Taipei" },
+  MY: { zone: "Asia/Kuala_Lumpur", city: "Kuala Lumpur" }, NZ: { zone: "Pacific/Auckland", city: "Auckland" },
 };
 const FEE: Record<string, string> = { PH: "₱6,000 per team", JP: "¥60,000 per team", SG: "S$400 per team", HK: "HK$2,800 per team", AU: "A$550 per team", KR: "₩300,000 per team", TH: "฿6,000 per team", TW: "NT$5,000 per team" };
 
@@ -101,7 +103,12 @@ export function getEventDetail(slug: string): EventDetail | null {
   const r = rng(hash(e.slug));
   const isTournament = e.tags.includes("Tournament");
   const hasResults = e.status === "past" || !!e.live;
-  const tz = TZ[e.code] ?? { offset: 0, city: e.city };
+  // The offset is resolved for this event's own dates: a fixed summer offset
+  // is a lie for an Australian or New Zealand winter tournament.
+  const tz = TZ[e.code];
+  const offset = gmtOffsetHours(tz?.zone, e.start);
+  const tzLabel = formatGmtOffset(offset);
+  const city = displayPlace(e.city);
 
   const teams: TeamInfo[] = NAMES.slice(0, e.teams).map((name, i) => ({
     name, pool: i % 2 ? "B" : "A", seed: i + 1, roster: 11 + Math.floor(r() * 5),
@@ -178,18 +185,18 @@ export function getEventDetail(slug: string): EventDetail | null {
   // ---- text + meta ----
   const division = e.tags.find((t) => ["Open", "Women", "Mixed"].includes(t)) ?? "Open";
   const setting = (e.tags.find((t) => ["Outdoor", "Indoor", "Beach"].includes(t)) ?? "Outdoor").toLowerCase();
-  const about = `${e.name} brings ${e.teams} ${division.toLowerCase()} division teams to ${e.city}, ${e.country}, for ${isTournament ? `${span} days of` : "a season of"} ${setting} pickleball. Expect competitive pool play, a knockout finals day with live scores on this page, and a sportsmanship moment after every match. Players, captains and spectators can follow every court from their phone without an account.`;
-  const venue = { name: `${e.city} Pickleball Courts`, address: `${e.city}, ${e.country}`, mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.city} pickleball courts ${e.country}`)}` };
+  const about = `${e.name} brings ${e.teams} ${division.toLowerCase()} division teams to ${city}, ${e.country}, for ${isTournament ? `${span} days of` : "a season of"} ${setting} pickleball. Expect competitive pool play, a knockout finals day with live scores on this page, and a sportsmanship moment after every match. Players, captains and spectators can follow every court from their phone without an account.`;
+  const venue = { name: `${city} Pickleball Courts`, address: `${city}, ${e.country}`, mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${city} pickleball courts ${e.country}`)}` };
 
   return {
-    event: e, about, venue, tz: { label: `GMT+${tz.offset}`, offset: tz.offset }, hasResults, days: isTournament ? span : poolSessions + 1, fields,
+    event: e, about, venue, tz: { label: tzLabel, offset }, hasResults, days: isTournament ? span : poolSessions + 1, fields,
     facts: [
       { label: "Format", value: `${division} division · ${setting}` },
       { label: "Pools", value: `2 pools of ${e.teams / 2}, then knockout` },
       { label: "Match rules", value: "First to 11, win by 2 · standard pickleball scoring" },
       { label: "Entry fee", value: FEE[e.code] ?? "Contact organizers" },
       { label: "Sportsmanship", value: "Scored 0–20 after every match" },
-      { label: "Local time", value: `${tz.city} (GMT+${tz.offset})` },
+      { label: "Local time", value: `${tz?.city ?? city} (${tzLabel})` },
     ],
      announcements: e.live ? ["Court 3 has moved next to the welcome tent. Check the schedule tab for updated courts.", "Weather rule is active. Outdoor matches pause during lightning or unsafe court conditions."] : e.status === "past" ? ["Thanks to every team and volunteer. Final standings and MVP results are now posted."] : ["Registration is open. Rosters lock one week before the first serve.", "The full schedule is published 3 days before the event."],
     teams, matches: [...matches, ...bracket], pools, overall, bracket, players, mvp,

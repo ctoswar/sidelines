@@ -7,9 +7,11 @@
 // "Register for event". Rather than trusting the columns, the public reads
 // derive the state from the dates.
 //
-// TODO: the comparison uses the server's current date in UTC. Events around
-// midnight in their own time zone can flip a day early/late — swap in the
-// event's IANA time zone once it lives on the row.
+// The comparison uses the event's own calendar date, inferred from its country
+// code. A server in UTC would otherwise flip a Manila event a day late at
+// 00:00–08:00 local, which is exactly when a same-day event is about to start.
+
+import { dateInZone, zoneForCode } from "./timezones";
 
 export type EventState = {
   /** "upcoming" until the last day is over, then "past". */
@@ -18,17 +20,18 @@ export type EventState = {
   live: boolean;
 };
 
-/** Date-only string for "now" in UTC (YYYY-MM-DD). */
-export function todayISO(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 10);
+/** Date-only string for "now" in UTC (YYYY-MM-DD), or in `zone`. */
+export function todayISO(now: Date = new Date(), zone?: string): string {
+  return dateInZone(now, zone);
 }
 
 export function deriveEventState(
   startDate: string,
   endDate: string,
   storedLive: boolean,
-  today: string = todayISO(),
+  options: { code?: string; today?: string; now?: Date } = {},
 ): EventState {
+  const today = options.today ?? todayISO(options.now ?? new Date(), zoneForCode(options.code));
   // An end date earlier than the start is treated as a one-day event.
   const lastDay = endDate >= startDate ? endDate : startDate;
   return {

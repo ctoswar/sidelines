@@ -20,6 +20,12 @@ const nextConfig = {
       },
     ];
   },
+  // `/events` is a natural URL to type, but the event browser lives on the
+  // homepage. A config redirect is a real 307; a page-level redirect() streams
+  // a 200 with a meta refresh instead.
+  async redirects() {
+    return [{ source: "/events", destination: "/", permanent: false }];
+  },
   // The Docker build sets NEXT_OUTPUT_STANDALONE=1 to produce the
   // self-contained .next/standalone bundle. Local builds keep the default
   // output so `next start` (and the verify harnesses) work unchanged.

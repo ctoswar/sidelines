@@ -12,6 +12,7 @@ import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
 import { eventSelection } from "@/server/events";
+import { displayPlace } from "@/lib/events-data";
 import { isRegistrationDivisionId } from "@/lib/divisions";
 import { deriveEventState } from "@/lib/event-state";
 
@@ -46,7 +47,8 @@ export async function GET() {
       division: isRegistrationDivisionId(r.division) ? r.division : null,
       event: {
         ...r.event,
-        ...deriveEventState(r.event.start, r.event.end, r.event.live),
+        city: displayPlace(r.event.city),
+        ...deriveEventState(r.event.start, r.event.end, r.event.live, { code: r.event.code }),
       },
     })),
   });
