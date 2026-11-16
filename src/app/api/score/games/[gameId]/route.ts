@@ -15,7 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { getServerSessionUser } from "@/server/session";
-import { resolveScoreToken, writeGameResult } from "@/server/score";
+import { resolveScoreToken, writeGameResult, writeLiveScore } from "@/server/score";
 import { resultSchema } from "@/lib/validators/events";
 
 export async function POST(
@@ -73,6 +73,21 @@ export async function POST(
       { message: first?.message ?? "Check the score and try again.", path: first?.path.join(".") },
       { status: 400 },
     );
+  }
+
+  // An in-play update only touches the game row, never `game_results`; the
+  // public event page reads it as a live match. Final writes keep the existing
+  // once-only rule for QR tokens.
+  if (parsed.data.live) {
+    const live = await writeLiveScore(gameId, parsed.data.score);
+    if (live === "final") {
+      return NextResponse.json(
+        { message: "This game is already final. Ask the organizer to correct the score." },
+        { status: 409 },
+      );
+    }
+    if (!live) return NextResponse.json({ message: "Game not found." }, { status: 404 });
+    return NextResponse.json({ result: live });
   }
 
   // A QR capability token scores a game once; correcting a recorded result is

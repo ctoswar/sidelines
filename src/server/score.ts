@@ -12,7 +12,7 @@
 // replaces its old links" behaviour.
 
 import { randomBytes } from "node:crypto";
-import { eq, or } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 import { db } from "@/server/db";
 import { publish } from "@/server/realtime";
 import * as t from "@/server/schema";
@@ -139,6 +139,38 @@ export async function writeGameResult(
   });
   publish("results");
   return { score, completedAt: completedAt.toISOString() };
+}
+
+/**
+ * Writes an in-play score without recording a result. The game row's score and
+ * `live` status are what the public event page overlays, so spectators see the
+ * current game; `game_results` and standings keep waiting for the final.
+ * Returns `"final"` once the game is closed, so a late update cannot rewrite
+ * a recorded result.
+ */
+export async function writeLiveScore(
+  gameId: string,
+  score: string,
+): Promise<{ score: string } | null | "final"> {
+  const [existing] = await db
+    .select({ status: t.games.status })
+    .from(t.games)
+    .where(eq(t.games.id, gameId))
+    .limit(1);
+  if (!existing) return null;
+  if (existing.status === "final") return "final";
+
+  // The status check above is not enough on its own: a final submit can land
+  // between the check and this write. The conditional update makes the final
+  // result win, so a slow live request cannot overwrite a recorded score.
+  const updated = await db
+    .update(t.games)
+    .set({ score, status: "live" })
+    .where(and(eq(t.games.id, gameId), ne(t.games.status, "final")))
+    .returning({ id: t.games.id });
+  if (updated.length === 0) return "final";
+  publish("results");
+  return { score };
 }
 
 /** Every saved result, keyed by game id — what the schedule overlays. */
