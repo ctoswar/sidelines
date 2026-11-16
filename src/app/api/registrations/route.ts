@@ -46,7 +46,7 @@ export async function GET() {
       division: isRegistrationDivisionId(r.division) ? r.division : null,
       event: {
         ...r.event,
-        ...deriveEventState(r.event.start, r.event.end, r.event.live),
+        ...deriveEventState(r.event.start, r.event.end, r.event.live, { code: r.event.code }),
       },
     })),
   });
