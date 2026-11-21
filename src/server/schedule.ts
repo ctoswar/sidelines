@@ -8,7 +8,7 @@
 // the seed order explicitly and verify-phase7.ts asserts DB order ≡ mock
 // order, the same way verify-phase4 asserts detail parity.
 
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { loadLiveTournament, loadPool, type PoolTeamRow } from "@/server/pool";
@@ -82,6 +82,23 @@ export async function loadGames(): Promise<Game[]> {
 }
 
 /**
+ * The organizer workspace's own live schedule. The public `loadGames` above
+ * still reads every live tournament because the player pages and the QR
+ * scorecard are cross-club; the workspace must not: account A's Schedule,
+ * Scorekeepers and Score-a-game pages are only account A's tournament.
+ */
+export async function loadGamesForOrganization(organizationId: string): Promise<Game[]> {
+  const rows = await db
+    .select({ game: t.games })
+    .from(t.games)
+    .innerJoin(t.tournaments, eq(t.games.tournamentId, t.tournaments.id))
+    .where(
+      and(eq(t.tournaments.status, "live"), eq(t.tournaments.organizationId, organizationId)),
+    );
+  return rows.map(({ game }) => gameRowToItem(game)).sort(byScheduleOrder);
+}
+
+/**
  * One tournament's own schedule, in the same display order as loadGames.
  *
  * The workspace scopes everything to the single live tournament, but the
@@ -112,11 +129,15 @@ export type TournamentListItem = Tournament & {
 };
 
 /**
- * Every tournament, live first, then by name. `name`/`meta`/`Live|Draft` are
- * what the old mock list carried; `id` and `scheduleStart` ride along so the
+ * Tournaments, live first, then by name. `name`/`meta`/`Live|Draft` are what
+ * the old mock list carried; `id` and `scheduleStart` ride along so the
  * dashboard can flip a tournament's status.
+ *
+ * Pass the signed-in organizer's organization id to scope the list to their
+ * own workspace. The parameter stays optional for the phase-7 verification
+ * script, which intentionally reads the seeded catalogue as a whole.
  */
-export async function loadTournaments(): Promise<TournamentListItem[]> {
+export async function loadTournaments(organizationId?: string): Promise<TournamentListItem[]> {
   const rows = await db
     .select({
       id: t.tournaments.id,
@@ -127,6 +148,7 @@ export async function loadTournaments(): Promise<TournamentListItem[]> {
       eventSlug: t.tournaments.eventSlug,
     })
     .from(t.tournaments)
+    .where(organizationId ? eq(t.tournaments.organizationId, organizationId) : undefined)
     // Enum ASC follows definition order, so "live" precedes "draft".
     .orderBy(asc(t.tournaments.status), asc(t.tournaments.name));
   return rows.map((row) => ({
@@ -139,8 +161,8 @@ export async function loadTournaments(): Promise<TournamentListItem[]> {
   }));
 }
 
-/** Pool table of the single live tournament: pool A first, seeds ascending. */
-export async function loadTournamentTeams(): Promise<Team[]> {
+/** Pool table of the live tournament: pool A first, seeds ascending. */
+export async function loadTournamentTeams(organizationId?: string): Promise<Team[]> {
   return db
     .select({
       name: t.tournamentTeams.name,
@@ -149,7 +171,11 @@ export async function loadTournamentTeams(): Promise<Team[]> {
     })
     .from(t.tournamentTeams)
     .innerJoin(t.tournaments, eq(t.tournamentTeams.tournamentId, t.tournaments.id))
-    .where(eq(t.tournaments.status, "live"))
+    .where(
+      organizationId
+        ? and(eq(t.tournaments.status, "live"), eq(t.tournaments.organizationId, organizationId))
+        : eq(t.tournaments.status, "live"),
+    )
     .orderBy(asc(t.tournamentTeams.pool), asc(t.tournamentTeams.seed));
 }
 
@@ -159,13 +185,13 @@ export async function loadTournamentTeams(): Promise<Team[]> {
  * reads that event's registrations), and how many signups exist so the view
  * can offer "build pool from signups" only when there is something to build.
  */
-export async function loadPoolView(): Promise<{
+export async function loadPoolView(organizationId?: string): Promise<{
   teams: PoolTeamRow[];
   tournament: { id: string; name: string } | null;
   eventSlug: string | null;
   signupCount: number;
 }> {
-  const live = await loadLiveTournament();
+  const live = await loadLiveTournament(organizationId);
   if (!live) return { teams: [], tournament: null, eventSlug: null, signupCount: 0 };
 
   const [teams, signupCount] = await Promise.all([

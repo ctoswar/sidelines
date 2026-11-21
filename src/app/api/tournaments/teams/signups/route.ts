@@ -13,6 +13,7 @@
 // src/server/publish.ts), and that event owns the registrations.
 
 import { NextResponse } from "next/server";
+import { loadOrganization } from "@/server/organizations";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { bridgeSignups, loadLiveTournament, syncEventTeamCount } from "@/server/pool";
@@ -24,7 +25,8 @@ export async function POST() {
     return NextResponse.json({ message: "Only organizers manage the pool." }, { status: 403 });
   }
 
-  const live = await loadLiveTournament();
+  const organization = await loadOrganization(user.id);
+  const live = organization ? await loadLiveTournament(organization.id) : null;
   if (!live) {
     return NextResponse.json(
       { message: "There is no live tournament to build a pool for." },

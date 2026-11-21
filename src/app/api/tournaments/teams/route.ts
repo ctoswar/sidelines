@@ -12,6 +12,7 @@
 // the published event's team count in step with the pool.
 
 import { NextResponse } from "next/server";
+import { loadOrganization } from "@/server/organizations";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { addEntrants, loadLiveTournament, syncEventTeamCount } from "@/server/pool";
@@ -27,7 +28,7 @@ async function organizerOrError() {
 }
 
 export async function POST(request: Request) {
-  const { error } = await organizerOrError();
+  const { user, error } = await organizerOrError();
   if (error) return error;
 
   const body = await request.json().catch(() => null);
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const live = await loadLiveTournament();
+  const organization = await loadOrganization(user!.id);
+  const live = organization ? await loadLiveTournament(organization.id) : null;
   if (!live) {
     return NextResponse.json(
       { message: "There is no live tournament to add players to. Create one first." },

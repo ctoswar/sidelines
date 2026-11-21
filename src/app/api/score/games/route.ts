@@ -3,6 +3,7 @@
 //   GET /api/score/games — { crew: { [gameId]: { scorekeeper, umpire } } }
 
 import { NextResponse } from "next/server";
+import { loadOrganization } from "@/server/organizations";
 import { getServerSessionUser } from "@/server/session";
 import { getGameCrewMap } from "@/server/score";
 
@@ -13,5 +14,8 @@ export async function GET() {
     return NextResponse.json({ message: "Only organizers can manage game crew." }, { status: 403 });
   }
 
-  return NextResponse.json({ crew: await getGameCrewMap() });
+  const organization = await loadOrganization(user.id);
+  return NextResponse.json({
+    crew: await getGameCrewMap(organization?.id),
+  });
 }

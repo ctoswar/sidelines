@@ -12,9 +12,10 @@
 //       already has matches (auto-fill never overwrites)
 
 import { NextResponse } from "next/server";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
+import { loadOrganization } from "@/server/organizations";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { buildSchedule } from "@/server/schedule";
@@ -26,11 +27,16 @@ export async function POST() {
     return NextResponse.json({ message: "Only organizers can fill the schedule." }, { status: 403 });
   }
 
-  const [live] = await db
-    .select()
-    .from(t.tournaments)
-    .where(eq(t.tournaments.status, "live"))
-    .limit(1);
+  const organization = await loadOrganization(user.id);
+  const [live] = organization
+    ? await db
+        .select()
+        .from(t.tournaments)
+        .where(
+          and(eq(t.tournaments.status, "live"), eq(t.tournaments.organizationId, organization.id)),
+        )
+        .limit(1)
+    : [];
   if (!live) {
     return NextResponse.json(
       { message: "Create a tournament first — the schedule is built from the live tournament." },

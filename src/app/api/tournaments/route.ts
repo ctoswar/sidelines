@@ -17,7 +17,7 @@
 // tournament row keeps no dates, so this is the only moment it can be named.
 
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
 import { getServerSessionUser } from "@/server/session";
@@ -67,10 +67,16 @@ export async function POST(request: Request) {
   // leave nothing in it.
   const created = await db.transaction(async (tx) => {
     if (input.status === "live") {
+      // Only this organizer's own live slot moves. Two accounts with their
+      // own clubs each keep one live tournament.
       const demoted = await tx
         .update(t.tournaments)
         .set({ status: "draft", updatedAt: new Date() })
-        .where(eq(t.tournaments.status, "live"))
+        .where(
+          organization
+            ? eq(t.tournaments.organizationId, organization.id)
+            : isNull(t.tournaments.organizationId),
+        )
         .returning({ eventSlug: t.tournaments.eventSlug });
       // The displaced tournament's event stops advertising "Live now" too.
       for (const other of demoted) await setEventLive(tx, other.eventSlug, false);

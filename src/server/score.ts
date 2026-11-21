@@ -67,9 +67,22 @@ export async function gameExists(gameId: string): Promise<boolean> {
   return Boolean(row);
 }
 
-/** Crew names for every game that has a row — the schedule/scorekeeper feed. */
-export async function getGameCrewMap(): Promise<Record<string, GameCrewNames>> {
-  const rows = await db.select().from(t.gameCrew);
+/**
+ * Crew names for every game that has a row — the schedule/scorekeeper feed.
+ * Pass the organizer's organization id from the workspace so one club's crew
+ * names never appear in another club's queue.
+ */
+export async function getGameCrewMap(
+  organizationId?: string,
+): Promise<Record<string, GameCrewNames>> {
+  const rows = organizationId
+    ? await db
+        .select({ gameId: t.gameCrew.gameId, scorekeeper: t.gameCrew.scorekeeper, umpire: t.gameCrew.umpire })
+        .from(t.gameCrew)
+        .innerJoin(t.games, eq(t.gameCrew.gameId, t.games.id))
+        .innerJoin(t.tournaments, eq(t.games.tournamentId, t.tournaments.id))
+        .where(eq(t.tournaments.organizationId, organizationId))
+    : await db.select().from(t.gameCrew);
   return Object.fromEntries(
     rows.map((r) => [r.gameId, { scorekeeper: r.scorekeeper, umpire: r.umpire }]),
   );

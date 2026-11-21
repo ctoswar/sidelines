@@ -5,14 +5,20 @@ import { ScorePanel } from "@/components/dashboard/score-panel";
 import { divisionLabel } from "@/lib/divisions";
 import { parseFinalScore } from "@/lib/game-results";
 import { applyScheduleStartTime } from "@/lib/schedule-config";
-import { loadGames } from "@/server/schedule";
+import { loadOrganization } from "@/server/organizations";
+import { loadGamesForOrganization } from "@/server/schedule";
+import { requireRole } from "@/server/session";
 
 export const metadata: Metadata = { title: "Score a game – Sidelines" };
 export const dynamic = "force-dynamic";
 
 export default async function ScorePage({ searchParams }: { searchParams: Promise<{ game?: string; scheduleStart?: string }> }) {
   const { game, scheduleStart } = await searchParams;
-  const schedule = applyScheduleStartTime(await loadGames(), scheduleStart ?? "09:00");
+  // Score only this organizer's own live schedule — never another club's game.
+  const user = await requireRole("organizer");
+  const organization = await loadOrganization(user.id);
+  const ownGames = organization ? await loadGamesForOrganization(organization.id) : [];
+  const schedule = applyScheduleStartTime(ownGames, scheduleStart ?? "09:00");
   const g = schedule.find((x) => x.id === game) ?? schedule.find((x) => x.status === "live") ?? schedule[0];
 
   // Starting from an empty database is a first-run state, not an error: with
