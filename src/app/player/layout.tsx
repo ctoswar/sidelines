@@ -4,6 +4,7 @@ import { requireRole } from "@/server/session";
 
 const items: NavItem[] = [
   { href: "/player", label: "Home" },
+  { href: "/player/discover", label: "Discover" },
   { href: "/player/registrations", label: "My events" },
   { href: "/player/schedule", label: "My schedule" },
   { href: "/player/team", label: "My team" },

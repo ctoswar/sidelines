@@ -14,6 +14,7 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "db:admin": "tsx src/scripts/create-admin.ts",
     "db:seed:demo": "tsx src/scripts/seed-demo.ts",
+    "db:seed:hubs": "tsx src/scripts/seed-hubs.ts",
     "db:clean:demo": "tsx src/scripts/clean-demo-data.ts",
     "db:sync:live": "tsx src/scripts/sync-event-live.ts",
     "db:migrate:docker": "sh scripts/db-migrate-docker.sh"

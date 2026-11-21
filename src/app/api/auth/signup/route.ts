@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { auth, type AppRole } from "@/server/auth";
 import { db } from "@/server/db";
+import { ensureHubForOrganization } from "@/server/hubs";
 import { allow, requestIp } from "@/server/rate-limit";
 import * as t from "@/server/schema";
 import {
@@ -154,7 +155,14 @@ export async function POST(request: Request) {
   if (role === "player") {
     await db.insert(t.playerProfiles).values(playerProfileRow(userId, body));
   } else {
-    await db.insert(t.organizations).values(organizationRow(userId, body));
+    // A new organizer is also a public SportsHub: creating both here means
+    // the club shows up in Discover immediately and its published events land
+    // on the hub's Events tab through `organizationId`.
+    const [organization] = await db
+      .insert(t.organizations)
+      .values(organizationRow(userId, body))
+      .returning();
+    if (organization) await ensureHubForOrganization(organization, email);
   }
 
   return NextResponse.json({ ok: true, role, message: "Account created. You are now signed in." });

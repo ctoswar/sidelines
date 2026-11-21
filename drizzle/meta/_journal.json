@@ -36,6 +36,13 @@
       "when": 1793030383583,
       "tag": "0004_add_admin_role",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795278339003,
+      "tag": "0005_lyrical_the_liberteens",
+      "breakpoints": true
     }
   ]
 }
