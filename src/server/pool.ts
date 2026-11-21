@@ -40,8 +40,12 @@ export type LiveTournament = { id: string; name: string; eventSlug: string | nul
  * The live tournament and the event slug it publishes under — the slug is what
  * ties the pool table to the registrations the signups bridge reads. A draft
  * has no event, so `eventSlug` is null until it goes live.
+ *
+ * Pass the organizer's organization id from every workspace read: each club
+ * has its own live tournament, and the unscoped call is only for the public
+ * player/score surfaces.
  */
-export async function loadLiveTournament(): Promise<LiveTournament | null> {
+export async function loadLiveTournament(organizationId?: string): Promise<LiveTournament | null> {
   const [row] = await db
     .select({
       id: t.tournaments.id,
@@ -49,7 +53,11 @@ export async function loadLiveTournament(): Promise<LiveTournament | null> {
       eventSlug: t.tournaments.eventSlug,
     })
     .from(t.tournaments)
-    .where(eq(t.tournaments.status, "live"))
+    .where(
+      organizationId
+        ? and(eq(t.tournaments.status, "live"), eq(t.tournaments.organizationId, organizationId))
+        : eq(t.tournaments.status, "live"),
+    )
     .limit(1);
   return row ?? null;
 }

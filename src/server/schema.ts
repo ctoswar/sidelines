@@ -21,11 +21,13 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -338,6 +340,221 @@ export const openTournaments = pgTable("open_tournaments", {
   eventSlug: text("event_slug").references(() => events.slug, { onDelete: "set null" }),
 });
 
+// ---------- discovery: public SportsHubs ----------
+//
+// A SportsHub is the public face of a club or venue: the thing a player
+// browses in Discover, follows, books a court at, and checks for open play.
+// It is deliberately separate from `organizations` (which owns tournaments
+// and is tied to one signed-in organizer) because a hub can exist before an
+// organizer claims it, and several organizers can share one venue.
+//
+// `organizationId` links a claimed hub to the workspace that publishes its
+// events; seeded community hubs leave it null and use `hubEvents` instead.
+
+export type HubOperatingHours = {
+  /** "Monday" … "Sunday". */
+  day: string;
+  /** Display labels, e.g. "6am". */
+  open: string;
+  close: string;
+  closed?: boolean;
+};
+
+export const sportsHubs = pgTable(
+  "sports_hubs",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    organizationId: text("organization_id").references(() => organizations.id, {
+      onDelete: "set null",
+    }),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    about: text("about").default("").notNull(),
+    address: text("address").default("").notNull(),
+    city: text("city").default("").notNull(),
+    country: text("country").default("Philippines").notNull(),
+    phone: text("phone").default("").notNull(),
+    email: text("email").default("").notNull(),
+    /** Tile / mark colour used across the directory. */
+    logoColor: text("logo_color").default("#1f6b4a").notNull(),
+    coverColor: text("cover_color").default("#174f37").notNull(),
+    monogram: text("monogram").default("").notNull(),
+    /** Seeded member base; follows are added on top at read time. */
+    memberCount: integer("member_count").default(0).notNull(),
+    /** Rough coordinates for the Discover map, not a geocoder. */
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
+    hours: jsonb("hours").$type<HubOperatingHours[]>().notNull(),
+    /** A hub that is listed but not yet taking bookings or sessions. */
+    comingSoon: boolean("coming_soon").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("sports_hubs_slug_idx").on(t.slug),
+    index("sports_hubs_org_idx").on(t.organizationId),
+    index("sports_hubs_city_idx").on(t.city),
+  ],
+);
+
+export const hubCourts = pgTable(
+  "hub_courts",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    surface: text("surface").default("Pickleball").notNull(),
+    indoor: boolean("indoor").default(false).notNull(),
+    /** Display price for a one-hour slot, e.g. "₱350". */
+    hourlyRate: text("hourly_rate").default("").notNull(),
+    sort: integer("sort").default(0).notNull(),
+  },
+  (t) => [uniqueIndex("hub_courts_slot_idx").on(t.hubId, t.name)],
+);
+
+export const hubOpenPlayTemplates = pgTable(
+  "hub_open_play_templates",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    /** 0 = Sunday … 6 = Saturday, matching Date#getDay. */
+    weekday: integer("weekday").notNull(),
+    title: text("title").notNull(),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time").notNull(),
+    court: text("court").default("").notNull(),
+    level: text("level").default("All levels").notNull(),
+    capacity: integer("capacity").default(24).notNull(),
+    price: text("price").default("").notNull(),
+    active: boolean("active").default(true).notNull(),
+  },
+  (t) => [index("hub_open_play_hub_idx").on(t.hubId, t.weekday)],
+);
+
+export const hubOpenPlaySignups = pgTable(
+  "hub_open_play_signups",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => hubOpenPlayTemplates.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** ISO date, YYYY-MM-DD — one row per player per session occurrence. */
+    date: text("date").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("hub_open_play_signup_idx").on(t.templateId, t.date, t.userId),
+    index("hub_open_play_session_idx").on(t.templateId, t.date),
+  ],
+);
+
+export const hubBookings = pgTable(
+  "hub_bookings",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    courtId: text("court_id")
+      .notNull()
+      .references(() => hubCourts.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    /** ISO date, YYYY-MM-DD. */
+    date: text("date").notNull(),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("hub_bookings_slot_idx").on(t.courtId, t.date, t.startTime),
+    index("hub_bookings_user_idx").on(t.userId, t.date),
+    index("hub_bookings_hub_date_idx").on(t.hubId, t.date),
+  ],
+);
+
+export const hubFollows = pgTable(
+  "hub_follows",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("hub_follows_pair_idx").on(t.hubId, t.userId)],
+);
+
+export const hubPhotos = pgTable(
+  "hub_photos",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    caption: text("caption").default("").notNull(),
+    /** CSS gradient fallback while the venue has no uploaded photo. */
+    color: text("color").default("#174f37").notNull(),
+    sort: integer("sort").default(0).notNull(),
+  },
+  (t) => [index("hub_photos_hub_idx").on(t.hubId, t.sort)],
+);
+
+export const hubNews = pgTable(
+  "hub_news",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    publishedAt: timestamp("published_at").defaultNow().notNull(),
+  },
+  (t) => [index("hub_news_hub_idx").on(t.hubId, t.publishedAt)],
+);
+
+export const hubEvents = pgTable(
+  "hub_events",
+  {
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    eventSlug: text("event_slug")
+      .notNull()
+      .references(() => events.slug, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.hubId, t.eventSlug] })],
+);
+
+export const hubMessages = pgTable(
+  "hub_messages",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    fromName: text("from_name").notNull(),
+    fromEmail: text("from_email").default("").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("hub_messages_hub_idx").on(t.hubId, t.createdAt)],
+);
+
 // ---------- relations (for drizzle relational queries) ----------
 
 export const userRelations = relations(user, ({ one, many }) => ({
@@ -377,4 +594,32 @@ export const gameRelations = relations(games, ({ one }) => ({
   tournament: one(tournaments, { fields: [games.tournamentId], references: [tournaments.id] }),
   crew: one(gameCrew, { fields: [games.id], references: [gameCrew.gameId] }),
   result: one(gameResults, { fields: [games.id], references: [gameResults.gameId] }),
+}));
+
+export const sportsHubRelations = relations(sportsHubs, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [sportsHubs.organizationId],
+    references: [organizations.id],
+  }),
+  courts: many(hubCourts),
+  bookings: many(hubBookings),
+  follows: many(hubFollows),
+  photos: many(hubPhotos),
+  news: many(hubNews),
+}));
+
+export const hubCourtRelations = relations(hubCourts, ({ one, many }) => ({
+  hub: one(sportsHubs, { fields: [hubCourts.hubId], references: [sportsHubs.id] }),
+  bookings: many(hubBookings),
+}));
+
+export const hubBookingRelations = relations(hubBookings, ({ one }) => ({
+  hub: one(sportsHubs, { fields: [hubBookings.hubId], references: [sportsHubs.id] }),
+  court: one(hubCourts, { fields: [hubBookings.courtId], references: [hubCourts.id] }),
+  user: one(user, { fields: [hubBookings.userId], references: [user.id] }),
+}));
+
+export const hubFollowRelations = relations(hubFollows, ({ one }) => ({
+  hub: one(sportsHubs, { fields: [hubFollows.hubId], references: [sportsHubs.id] }),
+  user: one(user, { fields: [hubFollows.userId], references: [user.id] }),
 }));

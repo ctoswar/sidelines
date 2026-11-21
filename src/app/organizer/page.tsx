@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { loadOrganization } from "@/server/organizations";
 import { loadTournaments } from "@/server/schedule";
+import { requireRole } from "@/server/session";
 import { TournamentActions } from "./tournament-actions";
 
 export const metadata = { title: "Tournaments – Sidelines" };
 export const dynamic = "force-dynamic";
 
 export default async function TournamentsPage() {
-  const tournaments = await loadTournaments();
+  // Every account owns its own tournaments. The list is scoped to the
+  // signed-in organizer's organization, not the whole `tournaments` table.
+  const user = await requireRole("organizer");
+  const organization = await loadOrganization(user.id);
+  const tournaments = organization ? await loadTournaments(organization.id) : [];
   return (
     <>
       <PageHeader

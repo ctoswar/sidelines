@@ -9,9 +9,10 @@
 // from without a session.
 
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import * as t from "@/server/schema";
+import { loadOrganization } from "@/server/organizations";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { scheduleStartSchema } from "@/lib/validators/tournaments";
@@ -25,12 +26,16 @@ async function organizerOrError() {
   return { user };
 }
 
-/** The one seeded schedule belongs to the tournament with live status. */
-async function liveTournament() {
+/** The caller's own live tournament — every organizer has their own slot. */
+async function liveTournament(userId: string) {
+  const organization = await loadOrganization(userId);
+  if (!organization) return null;
   const [row] = await db
     .select()
     .from(t.tournaments)
-    .where(eq(t.tournaments.status, "live"))
+    .where(
+      and(eq(t.tournaments.status, "live"), eq(t.tournaments.organizationId, organization.id)),
+    )
     .limit(1);
   return row ?? null;
 }
@@ -54,16 +59,16 @@ async function toTournamentWire(row: TournamentRow) {
 }
 
 export async function GET() {
-  const { error } = await organizerOrError();
+  const { user, error } = await organizerOrError();
   if (error) return error;
 
-  const row = await liveTournament();
+  const row = await liveTournament(user!.id);
   if (!row) return NextResponse.json({ message: "No live tournament to configure." }, { status: 404 });
   return NextResponse.json({ tournament: await toTournamentWire(row) });
 }
 
 export async function PUT(request: Request) {
-  const { error } = await organizerOrError();
+  const { user, error } = await organizerOrError();
   if (error) return error;
 
   const body = await request.json().catch(() => null);
@@ -78,7 +83,7 @@ export async function PUT(request: Request) {
     );
   }
 
-  const existing = await liveTournament();
+  const existing = await liveTournament(user!.id);
   if (!existing) return NextResponse.json({ message: "No live tournament to configure." }, { status: 404 });
 
   const [updated] = await db

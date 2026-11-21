@@ -7,6 +7,7 @@
 // unique index). Organizers only, like the rest of the workspace writes.
 
 import { NextResponse } from "next/server";
+import { loadOrganization } from "@/server/organizations";
 import { getServerSessionUser } from "@/server/session";
 import { publish } from "@/server/realtime";
 import { loadLiveTournament, removeEntrant, syncEventTeamCount } from "@/server/pool";
@@ -25,7 +26,8 @@ export async function DELETE(
   const decoded = decodeURIComponent(name).trim();
   if (!decoded) return NextResponse.json({ message: "Name an entrant to remove." }, { status: 400 });
 
-  const live = await loadLiveTournament();
+  const organization = await loadOrganization(user.id);
+  const live = organization ? await loadLiveTournament(organization.id) : null;
   if (!live) return NextResponse.json({ message: "There is no live tournament." }, { status: 404 });
 
   const removed = await removeEntrant(live.id, decoded);
