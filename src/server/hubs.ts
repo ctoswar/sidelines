@@ -20,9 +20,14 @@ import {
   DAY_NAMES,
   defaultHubHours,
   formatHour,
+  formatPeso,
   hubMonogram,
   isoDate,
+  MAX_OPEN_PLAY_PLAYERS,
+  OPEN_PLAY_CONVENIENCE_FEE,
+  parsePeso,
   weekdayOf,
+  type CheckoutQuote,
   type HubCard,
   type HubCourt,
   type HubCourtGrid,
@@ -31,6 +36,8 @@ import {
   type HubOpenPlaySession,
   type HubOperatingHours,
   type HubPhoto,
+  type HubVoucher,
+  type OpenPlayOrder,
 } from "@/lib/hubs";
 
 /** The columns every card needs; the follower count is merged in separately. */
@@ -95,9 +102,38 @@ async function followedHubIds(userId: string | null, ids: string[]): Promise<Set
   return new Set(rows.map((row) => row.hubId));
 }
 
+/**
+ * The hubs linked to an organization the viewer owns. Both workspaces use this
+ * to label "Your club" instead of rendering a follow action for one's own hub.
+ */
+async function ownedHubIds(userId: string | null, ids: string[]): Promise<Set<string>> {
+  if (!userId || ids.length === 0) return new Set();
+  const rows = await db
+    .select({ hubId: t.sportsHubs.id })
+    .from(t.sportsHubs)
+    .innerJoin(t.organizations, eq(t.sportsHubs.organizationId, t.organizations.id))
+    .where(and(eq(t.organizations.ownerUserId, userId), inArray(t.sportsHubs.id, ids)));
+  return new Set(rows.map((row) => row.hubId));
+}
+
+async function ownsHub(
+  organizationId: string | null,
+  userId: string | null,
+): Promise<boolean> {
+  if (!organizationId || !userId) return false;
+  const [row] = await db
+    .select({ id: t.organizations.id })
+    .from(t.organizations)
+    .where(
+      and(eq(t.organizations.id, organizationId), eq(t.organizations.ownerUserId, userId)),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 function toCard(
   row: HubCardRow,
-  counts: { courts: number; follows: number; following: boolean },
+  counts: { courts: number; follows: number; following: boolean; owned: boolean },
 ): HubCard {
   const followers = row.memberCount + counts.follows;
   return {
@@ -105,6 +141,7 @@ function toCard(
     memberCount: followers,
     followerCount: followers,
     following: counts.following,
+    ownedByViewer: counts.owned,
     courtCount: counts.courts,
   };
 }
@@ -136,10 +173,11 @@ export async function listHubs(
     .orderBy(asc(t.sportsHubs.comingSoon), asc(t.sportsHubs.name));
 
   const ids = rows.map((row) => row.id);
-  const [courts, follows, followed] = await Promise.all([
+  const [courts, follows, followed, owned] = await Promise.all([
     courtCounts(ids),
     followCounts(ids),
     followedHubIds(userId, ids),
+    ownedHubIds(userId, ids),
   ]);
 
   const cards = rows.map((row) =>
@@ -147,6 +185,7 @@ export async function listHubs(
       courts: courts.get(row.id) ?? 0,
       follows: follows.get(row.id) ?? 0,
       following: followed.has(row.id),
+      owned: owned.has(row.id),
     }),
   );
   return options.followedOnly ? cards.filter((card) => card.following) : cards;
@@ -165,10 +204,14 @@ function openPlaySessions(
   const today = isoDate();
   const taken = new Map<string, number>();
   const joined = new Set<string>();
+  const mine = new Map<string, number>();
   for (const signup of signups) {
     const key = `${signup.templateId}:${signup.date}`;
     taken.set(key, (taken.get(key) ?? 0) + 1);
-    if (userId && signup.userId === userId) joined.add(key);
+    if (userId && signup.userId === userId) {
+      joined.add(key);
+      mine.set(key, (mine.get(key) ?? 0) + 1);
+    }
   }
 
   const sessions: HubOpenPlaySession[] = [];
@@ -190,9 +233,11 @@ function openPlaySessions(
         level: template.level,
         capacity: template.capacity,
         price: template.price,
+        priceValue: parsePeso(template.price),
         taken: count,
         spotsLeft: Math.max(0, template.capacity - count),
         joined: joined.has(key),
+        myPlayers: mine.get(key) ?? 0,
       });
     }
   }
@@ -302,8 +347,19 @@ export async function loadHubDetail(
   const [row] = await db.select().from(t.sportsHubs).where(eq(t.sportsHubs.slug, slug)).limit(1);
   if (!row) return null;
 
-  const [courts, templates, photos, news, hubEventRows, linkedEventRows, follows, following, signups] =
-    await Promise.all([
+  const [
+    courts,
+    templates,
+    photos,
+    news,
+    hubEventRows,
+    linkedEventRows,
+    follows,
+    following,
+    signups,
+    ownedByViewer,
+    viewerName,
+  ] = await Promise.all([
       db
         .select()
         .from(t.hubCourts)
@@ -360,6 +416,15 @@ export async function loadHubDetail(
         })
         .from(t.hubOpenPlaySignups)
         .where(eq(t.hubOpenPlaySignups.hubId, row.id)),
+      ownsHub(row.organizationId, userId),
+      userId
+        ? db
+            .select({ name: t.user.name })
+            .from(t.user)
+            .where(eq(t.user.id, userId))
+            .limit(1)
+            .then(([result]) => result?.name ?? null)
+        : Promise.resolve(null),
     ]);
 
   const eventSlugs = [
@@ -387,6 +452,7 @@ export async function loadHubDetail(
     memberCount: followers,
     followerCount: followers,
     following,
+    ownedByViewer,
     comingSoon: row.comingSoon,
     courtCount: courts.length,
     lat: row.lat,
@@ -419,8 +485,22 @@ export async function loadHubDetail(
       .map(eventRowToItem)
       .sort((a, b) => a.start.localeCompare(b.start)),
     initialCourtGrid: await loadCourtGrid(row, isoDate(), userId),
+    viewerName,
+    vouchers: await vouchersForViewer(row.id, userId),
   };
   return detail;
+}
+
+/** The public hub linked to an organizer's own organization, if one exists. */
+export async function findHubForOrganization(
+  organizationId: string,
+): Promise<{ slug: string; name: string } | null> {
+  const [row] = await db
+    .select({ slug: t.sportsHubs.slug, name: t.sportsHubs.name })
+    .from(t.sportsHubs)
+    .where(eq(t.sportsHubs.organizationId, organizationId))
+    .limit(1);
+  return row ?? null;
 }
 
 export async function findHubBySlug(
@@ -473,19 +553,139 @@ async function followerTotal(hubId: string): Promise<number> {
 }
 
 export type OpenPlayResult =
-  | { ok: true; session: HubOpenPlaySession }
+  | { ok: true; session: HubOpenPlaySession; order: OpenPlayOrder | null }
   | { ok: false; status: number; message: string };
 
+/** Seats already taken on one occurrence — every signup row is a seat. */
+async function occurrenceCount(templateId: string, date: string): Promise<number> {
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(t.hubOpenPlaySignups)
+    .where(
+      and(eq(t.hubOpenPlaySignups.templateId, templateId), eq(t.hubOpenPlaySignups.date, date)),
+    );
+  return countRow?.count ?? 0;
+}
+
+function sessionState(
+  template: typeof t.hubOpenPlayTemplates.$inferSelect,
+  date: string,
+  count: number,
+  joined: boolean,
+  myPlayers: number,
+): HubOpenPlaySession {
+  return {
+    id: `${template.id}:${date}`,
+    templateId: template.id,
+    date,
+    title: template.title,
+    startTime: template.startTime,
+    endTime: template.endTime,
+    court: template.court,
+    level: template.level,
+    capacity: template.capacity,
+    price: template.price,
+    priceValue: parsePeso(template.price),
+    taken: count,
+    spotsLeft: Math.max(0, template.capacity - count),
+    joined,
+    myPlayers,
+  };
+}
+
 /**
- * Joins one occurrence of a weekly open-play template. Capacity is checked
- * against the occurrence, not the template, and the unique (template, date,
- * user) index makes a double-click a no-op rather than a duplicate seat.
+ * Resolves a checkout voucher against a session subtotal. Returns the
+ * discount in pesos and whether the code was applied; an unknown or inactive
+ * code leaves the quote untouched with the reason in `message`.
+ */
+async function resolveVoucher(
+  hubId: string,
+  rawCode: string,
+  subtotal: number,
+): Promise<{ applied: boolean; discount: number; code: string; message: string }> {
+  const code = rawCode.trim().toUpperCase();
+  if (!code) return { applied: false, discount: 0, code: "", message: "" };
+  const [voucher] = await db
+    .select()
+    .from(t.hubVouchers)
+    .where(and(eq(t.hubVouchers.hubId, hubId), eq(t.hubVouchers.code, code)))
+    .limit(1);
+  if (!voucher || !voucher.active) {
+    return { applied: false, discount: 0, code, message: "That voucher code is not valid here." };
+  }
+  const discount =
+    voucher.kind === "percent"
+      ? Math.round((subtotal * voucher.value) / 100)
+      : Math.min(voucher.value, subtotal);
+  return {
+    applied: true,
+    discount,
+    code,
+    message: voucher.kind === "percent" ? `${voucher.value}% off applied` : `${formatPeso(voucher.value)} off applied`,
+  };
+}
+
+/**
+ * The checkout quote for a session — what the Apply button and the confirm
+ * screen both show. The confirm endpoint re-runs the same math server-side,
+ * so a stale screen cannot charge less than the club is asking.
+ */
+export async function quoteOpenPlay(input: {
+  hubId: string;
+  templateId: string;
+  playerCount: number;
+  voucherCode: string;
+}): Promise<{ ok: true; quote: CheckoutQuote } | { ok: false; status: number; message: string }> {
+  const [template] = await db
+    .select()
+    .from(t.hubOpenPlayTemplates)
+    .where(
+      and(
+        eq(t.hubOpenPlayTemplates.id, input.templateId),
+        eq(t.hubOpenPlayTemplates.hubId, input.hubId),
+        eq(t.hubOpenPlayTemplates.active, true),
+      ),
+    )
+    .limit(1);
+  if (!template) return { ok: false, status: 404, message: "That open-play session is gone." };
+
+  const fee = parsePeso(template.price);
+  if (fee === null) return { ok: false, status: 400, message: "This session is free to join." };
+  const playerCount = Math.max(1, Math.min(MAX_OPEN_PLAY_PLAYERS, Math.floor(input.playerCount) || 1));
+  const subtotal = fee * playerCount;
+  const voucher = await resolveVoucher(input.hubId, input.voucherCode, subtotal);
+
+  return {
+    ok: true,
+    quote: {
+      playerCount,
+      sessionFee: fee,
+      subtotal,
+      discount: voucher.discount,
+      voucherCode: voucher.code,
+      voucherApplied: voucher.applied,
+      voucherMessage: voucher.message,
+      convenienceFee: OPEN_PLAY_CONVENIENCE_FEE,
+      total: Math.max(0, subtotal - voucher.discount) + OPEN_PLAY_CONVENIENCE_FEE,
+    },
+  };
+}
+
+/**
+ * Books seats on one occurrence through the checkout. The account's own seat
+ * plus each guest seat becomes one signup row (that is what capacity counts),
+ * and paid sessions also write an order recording the money. The unique
+ * (template, date, user, guest) index makes a double-click a no-op rather
+ * than a duplicate seat.
  */
 export async function joinOpenPlay(input: {
   hubId: string;
   templateId: string;
   date: string;
   userId: string;
+  /** Guest seat names; the account's own seat is always first. */
+  guestNames?: string[];
+  voucherCode?: string;
 }): Promise<OpenPlayResult> {
   const [template] = await db
     .select()
@@ -506,51 +706,117 @@ export async function joinOpenPlay(input: {
     return { ok: false, status: 400, message: "That session does not run on this day." };
   }
 
-  const [countRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(t.hubOpenPlaySignups)
-    .where(
-      and(
-        eq(t.hubOpenPlaySignups.templateId, template.id),
-        eq(t.hubOpenPlaySignups.date, input.date),
-      ),
-    );
-  const count = countRow?.count ?? 0;
-  if (count >= template.capacity) {
-    return { ok: false, status: 409, message: "That session is full. Try the next one." };
+  const guests = (input.guestNames ?? []).map((name) => name.trim());
+  if (guests.length > MAX_OPEN_PLAY_PLAYERS - 1) {
+    return { ok: false, status: 400, message: `Book up to ${MAX_OPEN_PLAY_PLAYERS} players.` };
+  }
+  if (guests.some((name) => !name)) {
+    return { ok: false, status: 400, message: "Give every guest a name, or drop the empty seat." };
+  }
+  if (guests.some((name) => name.length > 40)) {
+    return { ok: false, status: 400, message: "Keep guest names under 40 characters." };
+  }
+  const lowered = guests.map((name) => name.toLowerCase());
+  if (new Set(lowered).size !== lowered.length) {
+    return { ok: false, status: 400, message: "Each guest needs their own name." };
   }
 
-  await db
+  const count = await occurrenceCount(template.id, input.date);
+  const seats = 1 + guests.length;
+  if (count + seats > template.capacity) {
+    const left = Math.max(0, template.capacity - count);
+    return {
+      ok: false,
+      status: 409,
+      message: left === 0 ? "That session is full. Try the next one." : `Only ${left} spot${left === 1 ? "" : "s"} left.`,
+    };
+  }
+
+  const fee = parsePeso(template.price);
+
+  // Free session: the legacy one-click join, no order to record.
+  if (fee === null) {
+    const inserted = await db
+      .insert(t.hubOpenPlaySignups)
+      .values({ hubId: input.hubId, templateId: template.id, userId: input.userId, date: input.date })
+      .onConflictDoNothing()
+      .returning({ id: t.hubOpenPlaySignups.id });
+    if (inserted.length === 0) {
+      return { ok: false, status: 409, message: "You already joined this session." };
+    }
+    return {
+      ok: true,
+      order: null,
+      session: sessionState(template, input.date, count + 1, true, 1),
+    };
+  }
+
+  // Paid session: confirm the money, then take the seats.
+  const subtotal = fee * seats;
+  const voucher = await resolveVoucher(input.hubId, input.voucherCode ?? "", subtotal);
+  if ((input.voucherCode ?? "").trim() && !voucher.applied) {
+    return { ok: false, status: 400, message: voucher.message };
+  }
+  const total = Math.max(0, subtotal - voucher.discount) + OPEN_PLAY_CONVENIENCE_FEE;
+
+  const signups = await db
     .insert(t.hubOpenPlaySignups)
+    .values([
+      { hubId: input.hubId, templateId: template.id, userId: input.userId, date: input.date },
+      ...guests.map((guestName) => ({
+        hubId: input.hubId,
+        templateId: template.id,
+        userId: input.userId,
+        date: input.date,
+        guestName,
+      })),
+    ])
+    .onConflictDoNothing()
+    .returning({ id: t.hubOpenPlaySignups.id });
+  if (signups.length !== seats) {
+    return { ok: false, status: 409, message: "You already booked this session. Cancel it first." };
+  }
+
+  const [order] = await db
+    .insert(t.hubOpenPlayOrders)
     .values({
       hubId: input.hubId,
       templateId: template.id,
       userId: input.userId,
       date: input.date,
+      playerCount: seats,
+      players: guests,
+      sessionFee: fee,
+      discount: voucher.discount,
+      voucherCode: voucher.code,
+      convenienceFee: OPEN_PLAY_CONVENIENCE_FEE,
+      total,
     })
-    .onConflictDoNothing();
+    .returning();
 
   return {
     ok: true,
-    session: {
-      id: `${template.id}:${input.date}`,
-      templateId: template.id,
-      date: input.date,
-      title: template.title,
-      startTime: template.startTime,
-      endTime: template.endTime,
-      court: template.court,
-      level: template.level,
-      capacity: template.capacity,
-      price: template.price,
-      taken: count + 1,
-      spotsLeft: Math.max(0, template.capacity - count - 1),
-      joined: true,
-    },
+    order: order
+      ? {
+          id: order.id,
+          playerCount: order.playerCount,
+          players: order.players,
+          sessionFee: order.sessionFee,
+          discount: order.discount,
+          voucherCode: order.voucherCode,
+          convenienceFee: order.convenienceFee,
+          total: order.total,
+        }
+      : null,
+    session: sessionState(template, input.date, count + seats, true, seats),
   };
 }
 
-/** Leaves an occurrence; the returned session is the player's new state. */
+/**
+ * Cancels the viewer's booking on an occurrence — their own seat and every
+ * guest seat, plus the order behind them. The convenience fee stays with the
+ * club; the session fee comes back off the books.
+ */
 export async function leaveOpenPlay(input: {
   hubId: string;
   templateId: string;
@@ -569,7 +835,7 @@ export async function leaveOpenPlay(input: {
     .limit(1);
   if (!template) return { ok: false, status: 404, message: "That open-play session is gone." };
 
-  await db
+  const removed = await db
     .delete(t.hubOpenPlaySignups)
     .where(
       and(
@@ -577,35 +843,29 @@ export async function leaveOpenPlay(input: {
         eq(t.hubOpenPlaySignups.date, input.date),
         eq(t.hubOpenPlaySignups.userId, input.userId),
       ),
-    );
+    )
+    .returning({ id: t.hubOpenPlaySignups.id });
 
-  const [countRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(t.hubOpenPlaySignups)
-    .where(
-      and(
-        eq(t.hubOpenPlaySignups.templateId, template.id),
-        eq(t.hubOpenPlaySignups.date, input.date),
-      ),
-    );
-  const count = countRow?.count ?? 0;
+  const myPlayers = removed.length;
+  if (myPlayers > 0) {
+    await db
+      .update(t.hubOpenPlayOrders)
+      .set({ status: "cancelled" })
+      .where(
+        and(
+          eq(t.hubOpenPlayOrders.templateId, template.id),
+          eq(t.hubOpenPlayOrders.date, input.date),
+          eq(t.hubOpenPlayOrders.userId, input.userId),
+          eq(t.hubOpenPlayOrders.status, "confirmed"),
+        ),
+      );
+  }
+
+  const count = await occurrenceCount(template.id, input.date);
   return {
     ok: true,
-    session: {
-      id: `${template.id}:${input.date}`,
-      templateId: template.id,
-      date: input.date,
-      title: template.title,
-      startTime: template.startTime,
-      endTime: template.endTime,
-      court: template.court,
-      level: template.level,
-      capacity: template.capacity,
-      price: template.price,
-      taken: count,
-      spotsLeft: Math.max(0, template.capacity - count),
-      joined: false,
-    },
+    order: null,
+    session: sessionState(template, input.date, count, false, 0),
   };
 }
 
@@ -755,6 +1015,110 @@ export async function hubForBooking(slug: string) {
     .where(eq(t.sportsHubs.slug, slug))
     .limit(1);
   return row ?? null;
+}
+
+// ---- Vouchers: the hub owner's discount codes -----------------------------
+
+export type VoucherResult =
+  | { ok: true; vouchers: HubVoucher[] }
+  | { ok: false; status: number; message: string };
+
+/** Whether this user owns the organization this hub belongs to. */
+async function userOwnsHub(hubId: string, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: t.sportsHubs.id })
+    .from(t.sportsHubs)
+    .innerJoin(t.organizations, eq(t.sportsHubs.organizationId, t.organizations.id))
+    .where(and(eq(t.sportsHubs.id, hubId), eq(t.organizations.ownerUserId, userId)))
+    .limit(1);
+  return Boolean(row);
+}
+
+function voucherToWire(row: typeof t.hubVouchers.$inferSelect): HubVoucher {
+  return {
+    id: row.id,
+    code: row.code,
+    kind: row.kind === "amount" ? "amount" : "percent",
+    value: row.value,
+    active: row.active,
+  };
+}
+
+/** The hub's codes — owner only; other viewers get a 403, not the list. */
+export async function listHubVouchers(hubId: string, userId: string): Promise<VoucherResult> {
+  if (!(await userOwnsHub(hubId, userId))) {
+    return { ok: false, status: 403, message: "Only the club owner can manage vouchers." };
+  }
+  const rows = await db
+    .select()
+    .from(t.hubVouchers)
+    .where(eq(t.hubVouchers.hubId, hubId))
+    .orderBy(desc(t.hubVouchers.createdAt));
+  return { ok: true, vouchers: rows.map(voucherToWire) };
+}
+
+export async function createHubVoucher(
+  hubId: string,
+  userId: string,
+  input: { code: string; kind: string; value: number },
+): Promise<VoucherResult> {
+  if (!(await userOwnsHub(hubId, userId))) {
+    return { ok: false, status: 403, message: "Only the club owner can manage vouchers." };
+  }
+  const code = input.code.trim().toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9_-]{1,19}$/.test(code)) {
+    return { ok: false, status: 400, message: "Codes are 2-20 letters, numbers or dashes." };
+  }
+  const kind = input.kind === "amount" ? "amount" : "percent";
+  const value = Math.floor(Number(input.value));
+  if (kind === "percent" && (!Number.isFinite(value) || value < 1 || value > 100)) {
+    return { ok: false, status: 400, message: "Percent discounts run 1-100." };
+  }
+  if (kind === "amount" && (!Number.isFinite(value) || value < 1 || value > 100000)) {
+    return { ok: false, status: 400, message: "Enter a peso amount of at least 1." };
+  }
+  const [existing] = await db
+    .select({ id: t.hubVouchers.id })
+    .from(t.hubVouchers)
+    .where(and(eq(t.hubVouchers.hubId, hubId), eq(t.hubVouchers.code, code)))
+    .limit(1);
+  if (existing) {
+    return { ok: false, status: 409, message: `Code ${code} already exists for this club.` };
+  }
+  const [row] = await db
+    .insert(t.hubVouchers)
+    .values({ hubId, code, kind, value })
+    .returning();
+  return { ok: true, vouchers: row ? [voucherToWire(row)] : [] };
+}
+
+export async function setHubVoucherActive(
+  hubId: string,
+  userId: string,
+  id: string,
+  active: boolean,
+): Promise<VoucherResult> {
+  if (!(await userOwnsHub(hubId, userId))) {
+    return { ok: false, status: 403, message: "Only the club owner can manage vouchers." };
+  }
+  const rows = await db
+    .update(t.hubVouchers)
+    .set({ active })
+    .where(and(eq(t.hubVouchers.id, id), eq(t.hubVouchers.hubId, hubId)))
+    .returning();
+  if (rows.length === 0) return { ok: false, status: 404, message: "That voucher is gone." };
+  return { ok: true, vouchers: rows.map(voucherToWire) };
+}
+
+/** The codes a detail page shows in the owner panel (empty for non-owners). */
+export async function vouchersForViewer(hubId: string, userId: string | null): Promise<HubVoucher[]> {
+  if (!userId || !(await userOwnsHub(hubId, userId))) return [];
+  const rows = await db
+    .select()
+    .from(t.hubVouchers)
+    .where(eq(t.hubVouchers.hubId, hubId))
+    .orderBy(desc(t.hubVouchers.createdAt));
+  return rows.map(voucherToWire);
 }
 
 /** The formatter the UI uses; re-exported so pages do not import lib twice. */

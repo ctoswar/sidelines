@@ -1,6 +1,6 @@
+import { DiscoverView } from "@/components/discover/discover-view";
 import { listHubs } from "@/server/hubs";
 import { requireRole } from "@/server/session";
-import { DiscoverView } from "./discover-view";
 
 export const metadata = { title: "Discover SportsHubs – Sidelines" };
 export const dynamic = "force-dynamic";
@@ -20,6 +20,7 @@ export default async function DiscoverPage({
       initialQuery={q ?? ""}
       initialView={view === "map" ? "map" : "list"}
       initialFilter={filter === "followed" ? "followed" : "all"}
+      basePath="/player/discover"
     />
   );
 }

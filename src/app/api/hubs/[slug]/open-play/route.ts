@@ -1,11 +1,13 @@
 // Join / leave a SportsHub open-play session.
 //
-//   POST   /api/hubs/[slug]/open-play — { templateId, date }
+//   POST   /api/hubs/[slug]/open-play — { templateId, date, players?, voucherCode? }
 //   DELETE /api/hubs/[slug]/open-play?templateId=…&date=…
 //
 // Sessions are weekly templates expanded per date, so the pair (template,
 // date) identifies one occurrence. Capacity is enforced against that
-// occurrence; the unique index keeps repeat clicks idempotent.
+// occurrence; the unique index keeps repeat clicks idempotent. Paid sessions
+// go through the checkout: `players` carries guest seat names and the server
+// recomputes the money (never trusting the screen's total).
 
 import { NextResponse } from "next/server";
 import { findHubBySlug, joinOpenPlay, leaveOpenPlay } from "@/server/hubs";
@@ -37,11 +39,23 @@ export async function POST(
     return NextResponse.json({ message: "Pick an open-play session first." }, { status: 400 });
   }
 
-  const result = await joinOpenPlay({ hubId: hub!.id, templateId, date, userId: user.id });
+  const guestNames = Array.isArray(body?.players)
+    ? body.players.filter((name: unknown): name is string => typeof name === "string")
+    : [];
+  const voucherCode = typeof body?.voucherCode === "string" ? body.voucherCode : "";
+
+  const result = await joinOpenPlay({
+    hubId: hub!.id,
+    templateId,
+    date,
+    userId: user.id,
+    guestNames,
+    voucherCode,
+  });
   if (!result.ok) {
     return NextResponse.json({ message: result.message }, { status: result.status });
   }
-  return NextResponse.json({ session: result.session });
+  return NextResponse.json({ session: result.session, order: result.order });
 }
 
 export async function DELETE(

@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 import { useToast } from "@/components/dashboard/use-toast";
 import {
   ArrowUpRightIcon,
+  CheckIcon,
   CourtIcon,
   HeartIcon,
   ListIcon,
@@ -15,7 +16,7 @@ import {
   UsersIcon,
 } from "@/components/discover/icons";
 import { setHubFollow } from "@/lib/hubs-client";
-import type { HubCard } from "@/lib/hubs";
+import type { DiscoverBasePath, HubCard } from "@/lib/hubs";
 
 type View = "list" | "map";
 type Filter = "all" | "followed";
@@ -25,11 +26,14 @@ export function DiscoverView({
   initialQuery,
   initialView,
   initialFilter,
+  basePath,
 }: {
   hubs: HubCard[];
   initialQuery: string;
   initialView: View;
   initialFilter: Filter;
+  /** The workspace this directory is rendered in; links stay role-scoped. */
+  basePath: DiscoverBasePath;
 }) {
   const [items, setItems] = useState(hubs);
   const [query, setQuery] = useState(initialQuery);
@@ -52,6 +56,7 @@ export function DiscoverView({
 
   const cities = useMemo(() => new Set(items.map((hub) => hub.city).filter(Boolean)), [items]);
   const followedCount = items.filter((hub) => hub.following).length;
+  const ownedCount = items.filter((hub) => hub.ownedByViewer).length;
 
   const syncUrl = (next: { q?: string; view?: View; filter?: Filter }) => {
     const params = new URLSearchParams();
@@ -66,7 +71,7 @@ export function DiscoverView({
   };
 
   const toggleFollow = async (hub: HubCard) => {
-    if (busy) return;
+    if (busy || hub.ownedByViewer) return;
     setBusy(hub.slug);
     const nextFollowing = !hub.following;
     setItems((current) =>
@@ -135,7 +140,7 @@ export function DiscoverView({
             <b>{cities.size}</b> cities
           </span>
           <span>
-            <b>{followedCount}</b> followed
+            <b>{ownedCount || followedCount}</b> {ownedCount ? "yours" : "followed"}
           </span>
         </div>
       </section>
@@ -149,6 +154,7 @@ export function DiscoverView({
             <SearchIcon size={20} />
             <input
               id="hub-search"
+              type="search"
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
@@ -156,6 +162,7 @@ export function DiscoverView({
               }}
               placeholder="Search by name or location…"
               autoComplete="off"
+              enterKeyHint="search"
             />
             {query && (
               <button
@@ -199,7 +206,7 @@ export function DiscoverView({
       </section>
 
       <div className="discover-toolbar">
-        <p>
+        <p aria-live="polite">
           <strong>{filtered.length}</strong> SportsHub{filtered.length === 1 ? "" : "s"}
           {query.trim() && <span> matching “{query.trim()}”</span>}
         </p>
@@ -255,13 +262,19 @@ export function DiscoverView({
             <HubCardView
               key={hub.slug}
               hub={hub}
+              basePath={basePath}
               busy={busy === hub.slug}
               onFollow={() => void toggleFollow(hub)}
             />
           ))}
         </div>
       ) : (
-        <HubMap hubs={filtered} busy={busy} onFollow={(hub) => void toggleFollow(hub)} />
+        <HubMap
+          hubs={filtered}
+          basePath={basePath}
+          busy={busy}
+          onFollow={(hub) => void toggleFollow(hub)}
+        />
       )}
 
       {node}
@@ -271,10 +284,12 @@ export function DiscoverView({
 
 function HubCardView({
   hub,
+  basePath,
   busy,
   onFollow,
 }: {
   hub: HubCard;
+  basePath: DiscoverBasePath;
   busy: boolean;
   onFollow: () => void;
 }) {
@@ -285,11 +300,15 @@ function HubCardView({
 
   return (
     <article className="discover-card" style={style}>
-      <Link href={`/player/discover/${hub.slug}`} className="discover-card-link">
+      <Link href={`${basePath}/${hub.slug}`} className="discover-card-link">
         <div className="discover-card-cover">
           <span className="discover-card-courtlines" aria-hidden="true" />
           <span className="discover-card-monogram">{hub.monogram}</span>
-          {hub.comingSoon && <span className="discover-coming">Coming soon</span>}
+          {hub.ownedByViewer ? (
+            <span className="discover-own">Your club</span>
+          ) : (
+            hub.comingSoon && <span className="discover-coming">Coming soon</span>
+          )}
         </div>
         <div className="discover-card-body">
           <span className="discover-card-logo">{hub.monogram}</span>
@@ -307,26 +326,34 @@ function HubCardView({
           </div>
         </div>
       </Link>
-      <button
-        type="button"
-        onClick={onFollow}
-        disabled={busy}
-        aria-pressed={hub.following}
-        className={`discover-follow ${hub.following ? "is-following" : ""}`}
-      >
-        <HeartIcon size={15} filled={hub.following} />
-        {busy ? "Saving…" : hub.following ? "Following" : "Follow"}
-      </button>
+      {hub.ownedByViewer ? (
+        <span className="discover-own-pill">
+          <CheckIcon size={15} /> Your club
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onFollow}
+          disabled={busy}
+          aria-pressed={hub.following}
+          className={`discover-follow ${hub.following ? "is-following" : ""}`}
+        >
+          <HeartIcon size={15} filled={hub.following} />
+          {busy ? "Saving…" : hub.following ? "Following" : "Follow"}
+        </button>
+      )}
     </article>
   );
 }
 
 function HubMap({
   hubs,
+  basePath,
   busy,
   onFollow,
 }: {
   hubs: HubCard[];
+  basePath: DiscoverBasePath;
   busy: string;
   onFollow: (hub: HubCard) => void;
 }) {
@@ -393,7 +420,9 @@ function HubMap({
       {active && (
         <div className="discover-map-card">
           <div>
-            <p className="discover-map-card-kicker">{active.comingSoon ? "Opening soon" : "SportsHub"}</p>
+            <p className="discover-map-card-kicker">
+              {active.ownedByViewer ? "Your club" : active.comingSoon ? "Opening soon" : "SportsHub"}
+            </p>
             <h2>{active.name}</h2>
             <p>
               <PinIcon size={14} /> {active.address || `${active.city}, ${active.country}`}
@@ -405,17 +434,23 @@ function HubMap({
             </p>
           </div>
           <div className="discover-map-card-actions">
-            <button
-              type="button"
-              onClick={() => onFollow(active)}
-              disabled={busy === active.slug}
-              aria-pressed={active.following}
-              className={`discover-follow ${active.following ? "is-following" : ""}`}
-            >
-              <HeartIcon size={15} filled={active.following} />
-              {busy === active.slug ? "Saving…" : active.following ? "Following" : "Follow"}
-            </button>
-            <Link href={`/player/discover/${active.slug}`} className="discover-map-open">
+            {active.ownedByViewer ? (
+              <span className="discover-own-pill">
+                <CheckIcon size={15} /> Your club
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onFollow(active)}
+                disabled={busy === active.slug}
+                aria-pressed={active.following}
+                className={`discover-follow ${active.following ? "is-following" : ""}`}
+              >
+                <HeartIcon size={15} filled={active.following} />
+                {busy === active.slug ? "Saving…" : active.following ? "Following" : "Follow"}
+              </button>
+            )}
+            <Link href={`${basePath}/${active.slug}`} className="discover-map-open">
               Open hub <ArrowUpRightIcon size={15} />
             </Link>
           </div>

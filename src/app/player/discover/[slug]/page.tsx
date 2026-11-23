@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
+import { HubDetailView } from "@/components/discover/hub-detail-view";
 import { loadHubDetail } from "@/server/hubs";
 import { requireRole } from "@/server/session";
-import { HubDetailView } from "./hub-detail-view";
 
 export const dynamic = "force-dynamic";
 
@@ -32,5 +32,5 @@ export default async function SportsHubPage({
   const hub = await loadHubDetail(slug, user.id);
   if (!hub) notFound();
 
-  return <HubDetailView hub={hub} />;
+  return <HubDetailView hub={hub} basePath="/player/discover" />;
 }

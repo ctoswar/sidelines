@@ -174,6 +174,17 @@ async function partOne() {
   check("open play sessions listed", joinCount > 0, `saw ${joinCount}`);
   if (joinCount > 0) {
     await joinButtons.first().click();
+    // Paid sessions join through the checkout; free ones are one click.
+    const checkoutOpen = await page
+      .waitForSelector("#checkout-title", { timeout: 3_000 })
+      .then(() => true)
+      .catch(() => false);
+    check("paid session opens the checkout", checkoutOpen || (await page.locator(".hub-checkout").count()) === 0);
+    if (checkoutOpen) {
+      await page.locator(".checkout-agree input").check();
+      await page.locator(".checkout-confirm").click();
+      await page.waitForSelector("#checkout-title", { state: "detached" });
+    }
     await page.waitForFunction(
       () => document.querySelector(".hub-join")?.textContent?.includes("Joined"),
     );
@@ -311,6 +322,71 @@ async function partTwo() {
   // Schedule scoping: /organizer/schedule should not crash and must be scoped.
   const schedA = await api("/organizer/schedule", { headers: { Cookie: cookieHeader(cookiesA) } });
   check("org A schedule page renders", schedA.ok, `status ${schedA.status}`);
+
+  // Shared Discover: organizers browse the same directory, and their own hub
+  // renders as ownership instead of a follow/message target.
+  const discA = await api("/organizer/discover", { headers: { Cookie: cookieHeader(cookiesA) } });
+  const discAHtml = await discA.text();
+  check("organizer Discover renders the directory", discA.ok && discAHtml.includes("discover-hero"));
+  check("organizer Discover lists clubs", discAHtml.includes("Cebu Pickle Club"));
+  check("organizer Discover marks the organizer's own club", discAHtml.includes("Your club"));
+  check(
+    "organizer Discover links into the organizer hub pages",
+    discAHtml.includes('href="/organizer/discover/'),
+  );
+
+  const orgFollow = await api("/api/hubs/cebu-pickle-club/follow", {
+    method: "POST",
+    headers: { Cookie: cookieHeader(cookiesA) },
+  });
+  const orgFollowBody = (await orgFollow.json()) as { following?: boolean };
+  check(
+    "organizer can follow a club from Discover",
+    orgFollow.ok && orgFollowBody.following === true,
+  );
+  await api("/api/hubs/cebu-pickle-club/follow", {
+    method: "DELETE",
+    headers: { Cookie: cookieHeader(cookiesA) },
+  });
+
+  const orgMessage = await api("/api/hubs/cebu-pickle-club/message", {
+    method: "POST",
+    headers: { Cookie: cookieHeader(cookiesA) },
+    body: JSON.stringify({ body: "Do you host club-vs-club friendlies?" }),
+  });
+  check("organizer can message a club from Discover", orgMessage.ok, `status ${orgMessage.status}`);
+
+  const [orgAUser] = await db
+    .select({ id: t.user.id })
+    .from(t.user)
+    .where(eq(t.user.email, `org.a.discover${MARK}`))
+    .limit(1);
+  const [orgARow] = orgAUser
+    ? await db
+        .select({ id: t.organizations.id })
+        .from(t.organizations)
+        .where(eq(t.organizations.ownerUserId, orgAUser.id))
+        .limit(1)
+    : [];
+  const [orgAHub] = orgARow
+    ? await db
+        .select({ slug: t.sportsHubs.slug })
+        .from(t.sportsHubs)
+        .where(eq(t.sportsHubs.organizationId, orgARow.id))
+        .limit(1)
+    : [];
+
+  if (orgAHub) {
+    const own = await api(`/organizer/discover/${orgAHub.slug}`, {
+      headers: { Cookie: cookieHeader(cookiesA) },
+    });
+    const ownHtml = await own.text();
+    check("organizer own hub page renders", own.ok && ownHtml.includes("hub-hero"));
+    check("organizer own hub hides the follow action", !ownHtml.includes("hub-action-follow"));
+    check("organizer own hub explains ownership", ownHtml.includes("hub-owner-note"));
+  } else {
+    check("organizer own hub page renders", false, "no hub found for org A");
+  }
 }
 
 async function cleanup() {

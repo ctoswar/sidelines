@@ -43,6 +43,13 @@
       "when": 1795278339003,
       "tag": "0005_lyrical_the_liberteens",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795445535639,
+      "tag": "0006_superb_stellaris",
+      "breakpoints": true
     }
   ]
 }

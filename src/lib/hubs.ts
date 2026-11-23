@@ -6,6 +6,9 @@
 
 import type { EventItem } from "@/types";
 
+/** Workspace-scoped mount point for the shared Discover directory. */
+export type DiscoverBasePath = "/player/discover" | "/organizer/discover";
+
 export type HubOperatingHours = {
   day: string;
   /** "HH:MM" 24h. */
@@ -28,6 +31,8 @@ export type HubCard = {
   memberCount: number;
   followerCount: number;
   following: boolean;
+  /** True when the signed-in organizer owns this hub's organization. */
+  ownedByViewer: boolean;
   comingSoon: boolean;
   courtCount: number;
   lat: number | null;
@@ -69,11 +74,71 @@ export type HubOpenPlaySession = {
   level: string;
   capacity: number;
   price: string;
+  /** The price parsed to whole pesos; null when free or unparseable. */
+  priceValue: number | null;
   /** Players already signed up for this occurrence, including the viewer. */
   taken: number;
   spotsLeft: number;
   joined: boolean;
+  /** Seats the viewer holds on this occurrence (own + guests). */
+  myPlayers: number;
 };
+
+/** A discount code a hub owner published for their sessions. */
+export type HubVoucher = {
+  id: string;
+  code: string;
+  kind: "percent" | "amount";
+  value: number;
+  active: boolean;
+};
+
+/** The math behind a checkout screen, as the server computed it. */
+export type CheckoutQuote = {
+  playerCount: number;
+  /** Per-seat session fee in pesos; 0 for free sessions. */
+  sessionFee: number;
+  subtotal: number;
+  discount: number;
+  voucherCode: string;
+  voucherApplied: boolean;
+  voucherMessage: string;
+  convenienceFee: number;
+  total: number;
+};
+
+/** A completed open-play booking as returned to the checkout. */
+export type OpenPlayOrder = {
+  id: string;
+  playerCount: number;
+  players: string[];
+  sessionFee: number;
+  discount: number;
+  voucherCode: string;
+  convenienceFee: number;
+  total: number;
+};
+
+/** The flat per-booking fee the checkout adds to every paid session. */
+export const OPEN_PLAY_CONVENIENCE_FEE = 15;
+
+/** Most guest seats one checkout can book, the account's own seat included. */
+export const MAX_OPEN_PLAY_PLAYERS = 5;
+
+/**
+ * "₱250" / "PHP 250" / "250" -> 250; null when the price is free-form text
+ * or empty (a free session). Whole pesos only — the checkout rounds.
+ */
+export function parsePeso(value: string): number | null {
+  const match = value.replace(/,/g, "").match(/(?:₱|PHP\s?)?(\d{1,5})(?:\.\d{1,2})?/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount) : null;
+}
+
+export function formatPeso(amount: number): string {
+  return `₱${amount.toLocaleString("en-PH")}`;
+}
 
 export type HubPhoto = {
   id: string;
@@ -99,6 +164,10 @@ export type HubDetail = HubCard & {
   news: HubNewsItem[];
   events: EventItem[];
   initialCourtGrid: HubCourtGrid;
+  /** The signed-in viewer's display name, for the checkout's "You" seat. */
+  viewerName: string | null;
+  /** The owner's published discount codes, present only for the owner's view. */
+  vouchers: HubVoucher[];
 };
 
 export const DAY_NAMES = [

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { findHubForOrganization } from "@/server/hubs";
 import { loadOrganization } from "@/server/organizations";
 import { loadTournaments } from "@/server/schedule";
 import { requireRole } from "@/server/session";
@@ -14,6 +15,7 @@ export default async function TournamentsPage() {
   const user = await requireRole("organizer");
   const organization = await loadOrganization(user.id);
   const tournaments = organization ? await loadTournaments(organization.id) : [];
+  const hub = organization ? await findHubForOrganization(organization.id) : null;
   return (
     <>
       <PageHeader
@@ -24,7 +26,14 @@ export default async function TournamentsPage() {
             : "No tournaments yet — create the first one"
         }
       >
-        <Link href="/organizer/tournaments/new" className="btn btn-pri">New tournament</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {hub && (
+            <Link href={`/organizer/discover/${hub.slug}`} className="btn">
+              View your SportsHub
+            </Link>
+          )}
+          <Link href="/organizer/tournaments/new" className="btn btn-pri">New tournament</Link>
+        </div>
       </PageHeader>
       <div className="divide-y divide-line rounded-lg border border-line bg-card">
         {tournaments.map((tournament) => (

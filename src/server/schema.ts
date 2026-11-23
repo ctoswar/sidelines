@@ -448,14 +448,81 @@ export const hubOpenPlaySignups = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    /** ISO date, YYYY-MM-DD — one row per player per session occurrence. */
+    /** ISO date, YYYY-MM-DD - one row per player per session occurrence. */
     date: text("date").notNull(),
+    /**
+     * Companion seats booked by the account: "" is the account's own seat,
+     * any other value names the guest it was booked for. Capacity counts
+     * every row, so a three-player booking takes three seats.
+     */
+    guestName: text("guest_name").default("").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
-    uniqueIndex("hub_open_play_signup_idx").on(t.templateId, t.date, t.userId),
+    uniqueIndex("hub_open_play_signup_idx").on(t.templateId, t.date, t.userId, t.guestName),
     index("hub_open_play_session_idx").on(t.templateId, t.date),
   ],
+);
+
+/**
+ * The checkout record behind a paid open-play booking: the fee snapshot,
+ * the voucher applied and the total charged. A session's price can change
+ * after a player books, so the order stores what was actually agreed.
+ */
+export const hubOpenPlayOrders = pgTable(
+  "hub_open_play_orders",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => hubOpenPlayTemplates.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** ISO date, YYYY-MM-DD - the occurrence this booking paid for. */
+    date: text("date").notNull(),
+    /** Seats paid for, including the account's own. */
+    playerCount: integer("player_count").notNull(),
+    /** Names of the guest seats at booking time, in booking order. */
+    players: jsonb("players").$type<string[]>().notNull(),
+    /** Per-seat session fee, in pesos, as priced when booked. */
+    sessionFee: integer("session_fee").notNull(),
+    /** What the voucher took off the session subtotal, in pesos. */
+    discount: integer("discount").default(0).notNull(),
+    voucherCode: text("voucher_code").default("").notNull(),
+    convenienceFee: integer("convenience_fee").default(0).notNull(),
+    /** What the player paid: sessionFee * playerCount - discount + convenienceFee. */
+    total: integer("total").notNull(),
+    /** "confirmed" until the player cancels; the convenience fee is not returned. */
+    status: text("status").default("confirmed").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("hub_open_play_order_idx").on(t.templateId, t.date, t.userId)],
+);
+
+/**
+ * Discount codes a hub owner publishes for their open-play sessions. Percent
+ * codes take a share off the session subtotal; amount codes take a flat peso
+ * value off the whole subtotal.
+ */
+export const hubVouchers = pgTable(
+  "hub_vouchers",
+  {
+    id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+    hubId: text("hub_id")
+      .notNull()
+      .references(() => sportsHubs.id, { onDelete: "cascade" }),
+    /** Stored uppercase; lookups normalize before matching. */
+    code: text("code").notNull(),
+    kind: text("kind").default("percent").notNull(), // "percent" | "amount"
+    value: integer("value").notNull(),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("hub_voucher_code_idx").on(t.hubId, t.code)],
 );
 
 export const hubBookings = pgTable(

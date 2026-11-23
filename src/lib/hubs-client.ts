@@ -4,7 +4,13 @@
 // server's message promoted to an Error so the UI can show it verbatim.
 
 import { jsonRequest, parse } from "./api-client";
-import type { HubCourtGrid, HubOpenPlaySession } from "./hubs";
+import type {
+  CheckoutQuote,
+  HubCourtGrid,
+  HubOpenPlaySession,
+  HubVoucher,
+  OpenPlayOrder,
+} from "./hubs";
 
 export type FollowState = { following: boolean; followers: number };
 
@@ -58,6 +64,55 @@ export async function setOpenPlayJoin(
     ),
   );
   return body.session;
+}
+
+/** Books seats through the checkout: guest names + voucher, priced server-side. */
+export async function bookOpenPlay(
+  slug: string,
+  input: { templateId: string; date: string; players: string[]; voucherCode: string },
+): Promise<{ session: HubOpenPlaySession; order: OpenPlayOrder | null }> {
+  return parse<{ session: HubOpenPlaySession; order: OpenPlayOrder | null }>(
+    await fetch(`/api/hubs/${encodeURIComponent(slug)}/open-play`, jsonRequest(input)),
+  );
+}
+
+/** Previews a voucher at the checkout's Apply button. */
+export async function validateVoucher(
+  slug: string,
+  input: { templateId: string; playerCount: number; code: string },
+): Promise<CheckoutQuote> {
+  const body = await parse<{ quote: CheckoutQuote }>(
+    await fetch(`/api/hubs/${encodeURIComponent(slug)}/vouchers/validate`, jsonRequest(input)),
+  );
+  return body.quote;
+}
+
+export async function fetchVouchers(slug: string): Promise<HubVoucher[]> {
+  const body = await parse<{ vouchers: HubVoucher[] }>(
+    await fetch(`/api/hubs/${encodeURIComponent(slug)}/vouchers`),
+  );
+  return body.vouchers;
+}
+
+export async function createVoucher(
+  slug: string,
+  input: { code: string; kind: "percent" | "amount"; value: number },
+): Promise<HubVoucher> {
+  const body = await parse<{ voucher: HubVoucher }>(
+    await fetch(`/api/hubs/${encodeURIComponent(slug)}/vouchers`, jsonRequest(input)),
+  );
+  return body.voucher;
+}
+
+export async function setVoucherActive(
+  slug: string,
+  id: string,
+  active: boolean,
+): Promise<HubVoucher> {
+  const body = await parse<{ voucher: HubVoucher }>(
+    await fetch(`/api/hubs/${encodeURIComponent(slug)}/vouchers`, jsonRequest({ id, active })),
+  );
+  return body.voucher;
 }
 
 export async function sendHubMessage(slug: string, body: string): Promise<void> {
