@@ -4,10 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { useToast } from "@/components/dashboard/use-toast";
+import { PlayerHistoryView, PlayerStatsView } from "@/components/stats/player-stats-view";
 import { formatRange } from "@/lib/events-data";
 import { divisionLabel } from "@/lib/divisions";
 import { fetchMyRegistrations, unregisterFromEvent, type Registration } from "@/lib/registrations";
+import type { PlayerHistoryEntry, PlayerStats } from "@/lib/stats";
 import type { EventItem } from "@/types";
+
+/** The three tabs of the player's tournament home. */
+const TABS = ["Active tournaments", "Player stats", "History"] as const;
+type Tab = (typeof TABS)[number];
 
 const CHIP = "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide";
 
@@ -97,8 +103,17 @@ function EventRow({
   );
 }
 
-export function MyEvents() {
+export function MyEvents({
+  stats,
+  history,
+  viewerName,
+}: {
+  stats: PlayerStats;
+  history: PlayerHistoryEntry[];
+  viewerName: string;
+}) {
   const { show, node } = useToast();
+  const [tab, setTab] = useState<Tab>("Active tournaments");
   const [items, setItems] = useState<Registration[]>([]);
   const [ready, setReady] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -156,10 +171,40 @@ export function MyEvents() {
     </section>
   );
 
+  const tournamentTab = !ready ? (
+    <div className="rounded-xl border border-line bg-card p-8 text-center">
+      <p className="font-bold">Loading your registrations…</p>
+      <p className="mt-1 text-muted">One moment while we pull up your events.</p>
+    </div>
+  ) : entries.length === 0 ? (
+    <div className="rounded-xl border border-line bg-card p-8 text-center">
+      <p className="font-bold">No registrations yet</p>
+      <p className="mt-1 text-muted">Browse open tournaments and register to see them here.</p>
+      <Link href="/player/tournaments" className="btn btn-pri mt-4 inline-block">Find tournaments</Link>
+    </div>
+  ) : (
+    <>
+      {upcoming.length > 0 && section("Upcoming", upcoming)}
+      {past.length > 0 && section("Past", past)}
+      <p className="text-xs text-muted">
+        Register from any event page — registrations follow your account on every device.
+      </p>
+    </>
+  );
+
   return (
     <>
-      <PageHeader title="My events" subtitle="Tournaments you have registered for">
-        {ready && entries.length > 0 && (
+      <PageHeader
+        title="My events"
+        subtitle={
+          tab === "Active tournaments"
+            ? "Tournaments you have registered for"
+            : tab === "Player stats"
+              ? "Your record across every tournament"
+              : "Completed tournaments and final standings"
+        }
+      >
+        {tab === "Active tournaments" && ready && entries.length > 0 && (
           <p className="text-sm text-muted">
             <b className="text-fg tabular-nums">{entries.length}</b> registered ·{" "}
             <b className="text-fg tabular-nums">{upcoming.length}</b> upcoming
@@ -167,26 +212,24 @@ export function MyEvents() {
         )}
       </PageHeader>
 
-      {!ready ? (
-        <div className="rounded-xl border border-line bg-card p-8 text-center">
-          <p className="font-bold">Loading your registrations…</p>
-          <p className="mt-1 text-muted">One moment while we pull up your events.</p>
-        </div>
-      ) : entries.length === 0 ? (
-        <div className="rounded-xl border border-line bg-card p-8 text-center">
-          <p className="font-bold">No registrations yet</p>
-          <p className="mt-1 text-muted">Browse open tournaments and register to see them here.</p>
-          <Link href="/player/tournaments" className="btn btn-pri mt-4 inline-block">Find tournaments</Link>
-        </div>
-      ) : (
-        <>
-          {upcoming.length > 0 && section("Upcoming", upcoming)}
-          {past.length > 0 && section("Past", past)}
-          <p className="text-xs text-muted">
-            Register from any event page — registrations follow your account on every device.
-          </p>
-        </>
-      )}
+      <div className="myevents-tabs" role="tablist" aria-label="My events sections">
+        {TABS.map((item) => (
+          <button
+            key={item}
+            type="button"
+            role="tab"
+            aria-selected={tab === item}
+            className={tab === item ? "is-active" : ""}
+            onClick={() => setTab(item)}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+
+      {tab === "Active tournaments" && tournamentTab}
+      {tab === "Player stats" && <PlayerStatsView stats={stats} name={viewerName} />}
+      {tab === "History" && <PlayerHistoryView history={history} teamName={stats.teamName} />}
       {node}
     </>
   );

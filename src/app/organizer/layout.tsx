@@ -7,6 +7,7 @@ const items: NavItem[] = [
   { href: "/organizer/events", label: "Event hub" },
   { href: "/organizer/discover", label: "Discover" },
   { href: "/organizer/teams", label: "Teams" },
+  { href: "/organizer/players", label: "Players" },
   { href: "/organizer/schedule", label: "Schedule" },
   { href: "/organizer/scorekeepers", label: "Scorekeepers" },
   { href: "/organizer/score", label: "Score a game" },

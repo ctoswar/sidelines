@@ -96,6 +96,7 @@ Player signup supports profile picture uploads using JPG, PNG, or WebP files up 
 - `/organizer/events` — event hub list with registration counts; per-event hubs manage registrations and announcements.
 - `/organizer/discover` - the shared SportsHub directory, including the organizer's own public club page, with an owner-only voucher manager for paid open-play sessions.
 - `/organizer/teams` - manage teams and player formats.
+- `/organizer/players` - player directory for the organization's events and games, with each player's full stats + tournament history profile.
 - `/organizer/schedule` — view court schedule, match status, and assigned crew popups.
 - `/organizer/scorekeepers` — assign Scorekeeper and Umpire names, select a scheduled match, generate role-specific QR codes, and manage the QR queue.
 - `/organizer/score` — organizer scoring view.
@@ -107,7 +108,7 @@ Player signup supports profile picture uploads using JPG, PNG, or WebP files up 
 - `/player/schedule` — personal match schedule.
 - `/player/team` — team profile and roster.
 - `/player/tournaments` — available tournaments.
-- `/player/registrations` — registered events with cancel flows.
+- `/player/registrations` - registered events, computed player statistics (win rate, streak, points per game, per-tournament records) and completed-tournament history.
 - `/player/discover` open play - paid sessions join through a checkout (1-5 players per booking, owner voucher codes, non-refundable convenience fee) that records real orders and seats.
 - `/player/profile` — editable player identity, pickleball playbook, profile picture, and bio.
 

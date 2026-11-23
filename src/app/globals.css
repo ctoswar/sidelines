@@ -1183,6 +1183,12 @@ html.scroll-exp .event-row { animation: none; }
 .voucher-publish { padding: .45rem .8rem; background: var(--desk-ink); color: var(--desk-acid); font-size: .74rem; font-weight: 800; }
 .voucher-publish:hover { box-shadow: 3px 3px 0 var(--desk-acid); }
 
+/* ---- My events tab bar (player workspace) ------------------------------- */
+.myevents-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .25rem; margin-bottom: 1.5rem; padding: .3rem; border: 1px solid var(--desk-line, var(--line)); border-radius: 1rem; background: var(--desk-card, var(--card)); }
+.myevents-tabs button { padding: .6rem 1rem; border-radius: .75rem; color: var(--desk-muted, var(--muted)); font-size: .84rem; font-weight: 800; transition: background .15s ease, color .15s ease; }
+.myevents-tabs button:hover { color: var(--desk-ink, var(--fg)); }
+.myevents-tabs button.is-active { background: var(--desk-orange, var(--brand)); color: #fff; }
+
 .hub-action { display: inline-flex; align-items: center; gap: .4rem; padding: .65rem .9rem; border: 1px solid var(--desk-ink); font-size: .76rem; font-weight: 800; transition: background .2s ease, color .2s ease, box-shadow .2s ease; }
 .hub-action:hover:not(:disabled) { box-shadow: 4px 4px 0 var(--desk-acid); }
 .hub-action-follow { background: var(--desk-ink); color: var(--desk-acid); }
